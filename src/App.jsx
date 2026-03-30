@@ -336,61 +336,126 @@ function analyseCompatibility(r1,r2){
 }
 
 // ═══════════════════════════════════════════════════
-// UI STYLES
+// THEME SYSTEM
 // ═══════════════════════════════════════════════════
-const G="#C9A84C",DK="#090E15",D2="#0E1720",D3="#131F2D",BR="rgba(255,255,255,0.07)",TX="#F0EAD6",DM="#7a8fa0",FA="#2e4050";
-const pg={minHeight:"100vh",background:DK,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 16px",fontFamily:"'DM Sans',system-ui,sans-serif"};
-const crd={background:D2,border:"1px solid "+BR,borderRadius:20,padding:"40px 32px",width:"100%",maxWidth:560,boxShadow:"0 32px 80px rgba(0,0,0,0.6)"};
-const wid={background:D2,border:"1px solid "+BR,borderRadius:20,padding:"0 0 40px",width:"100%",maxWidth:720,boxShadow:"0 32px 80px rgba(0,0,0,0.6)"};
-const lbl={display:"block",fontSize:9,color:G,letterSpacing:3,textTransform:"uppercase",marginBottom:6,marginTop:18};
-const inp={width:"100%",padding:"12px 14px",background:DK,border:"1px solid "+BR,borderRadius:9,color:TX,fontSize:13,fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box",outline:"none"};
-const btnG={width:"100%",padding:"15px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:DK,border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"};
-const btnL={width:"100%",padding:"13px",background:"transparent",color:G,border:"1px solid "+G,borderRadius:10,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:20};
-const btnS={padding:"11px 16px",background:D3,border:"1px solid "+BR,color:DM,borderRadius:8,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"};
-const bod={color:"#8aabbb",fontSize:13,lineHeight:1.9};
-const hl={background:"rgba(201,168,76,0.07)",borderLeft:"3px solid #C9A84C",borderRadius:"0 8px 8px 0",padding:"12px 16px",marginTop:12};
+const GOLD = "#C9A84C";
+const DARK_THEME = {
+  G:GOLD, DK:"#090E15", D2:"#0E1720", D3:"#131F2D", D4:"#1A2B3C",
+  BR:"rgba(255,255,255,0.07)", TX:"#F0EAD6", DM:"#7a8fa0", FA:"#2e4050",
+  pageBackground:"#090E15", cardBackground:"#0E1720", inputBackground:"#090E15",
+  bodColor:"#8aabbb", sectionBorder:"rgba(255,255,255,0.07)", shadow:"0 32px 80px rgba(0,0,0,0.6)",
+  navInactive:"#131F2D", roleModelBg:"#090E15"
+};
+const LIGHT_THEME = {
+  G:GOLD, DK:"#F8F6F1", D2:"#FFFFFF", D3:"#F0EDE6", D4:"#E8E4DA",
+  BR:"rgba(0,0,0,0.08)", TX:"#1a1a1a", DM:"#6b7280", FA:"#9ca3af",
+  pageBackground:"#F0EDE6", cardBackground:"#FFFFFF", inputBackground:"#F8F6F1",
+  bodColor:"#444", sectionBorder:"rgba(0,0,0,0.07)", shadow:"0 16px 48px rgba(0,0,0,0.1)",
+  navInactive:"#F0EDE6", roleModelBg:"#F8F6F1"
+};
+
+// ═══════════════════════════════════════════════════
+// DATA STORAGE HELPERS (anonymous, consent-gated)
+// ═══════════════════════════════════════════════════
+function saveAnonymousReport(report) {
+  try {
+    const anon = {
+      ts: Date.now(),
+      mbti: report.mbti,
+      ennType: report.ennType,
+      discDom: report.discDom,
+      ocean: report.ocean,
+      element: report.nums?.element || null,
+      lp: report.nums?.lp || null,
+    };
+    const existing = JSON.parse(localStorage.getItem("pie_reports") || "[]");
+    existing.push(anon);
+    // Keep last 50 reports
+    if (existing.length > 50) existing.shift();
+    localStorage.setItem("pie_reports", JSON.stringify(existing));
+  } catch(e) { /* storage unavailable */ }
+}
+function clearStoredData() {
+  try { localStorage.removeItem("pie_reports"); } catch(e) {}
+}
 const BC={O:"#7C9CBF",C:"#C9A84C",E:"#7DBF8A",A:"#C97A7A",N:"#B07DBF"};
 const BL={O:"Openness",C:"Conscientiousness",E:"Extraversion",A:"Agreeableness",N:"Neuroticism"};
-
-function Sec({title,sub,children}){return <div style={{marginBottom:24,borderBottom:"1px solid "+BR,paddingBottom:22}}><div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:12}}><span style={{fontSize:9,letterSpacing:3,color:G,textTransform:"uppercase"}}>{title}</span>{sub&&<span style={{fontSize:11,color:FA}}>— {sub}</span>}</div>{children}</div>;}
-function Tag({children,c}){return <span style={{background:D3,border:"1px solid rgba(201,168,76,0.4)",color:c||G,fontSize:9,letterSpacing:1.5,padding:"4px 11px",borderRadius:20,textTransform:"uppercase"}}>{children}</span>;}
-function InfoCard({label,text,color}){return <div style={{background:DK,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+(color||G)}}><div style={{fontSize:9,color:color||G,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>{label}</div><p style={{...bod,fontSize:12,color:DM}}>{text}</p></div>;}
 
 // ═══════════════════════════════════════════════════
 // APP
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// APP
+// ═══════════════════════════════════════════════════
 export default function App(){
+  const[dark,setDark]=useState(true);
+  const T=dark?DARK_THEME:LIGHT_THEME;
+  const{G,DK,D2,D3,BR,TX,DM,FA}=T;
+
+  const pg={minHeight:"100vh",background:T.pageBackground,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 16px",fontFamily:"'DM Sans',system-ui,sans-serif"};
+  const crd={background:T.cardBackground,border:"1px solid "+BR,borderRadius:20,padding:"40px 32px",width:"100%",maxWidth:560,boxShadow:T.shadow};
+  const wid={background:T.cardBackground,border:"1px solid "+BR,borderRadius:20,padding:"0 0 40px",width:"100%",maxWidth:720,boxShadow:T.shadow};
+  const lbl={display:"block",fontSize:9,color:G,letterSpacing:3,textTransform:"uppercase",marginBottom:6,marginTop:18};
+  const inp={width:"100%",padding:"12px 14px",background:T.inputBackground,border:"1px solid "+BR,borderRadius:9,color:TX,fontSize:13,fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box",outline:"none"};
+  const btnG={width:"100%",padding:"15px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"};
+  const btnL={width:"100%",padding:"13px",background:"transparent",color:G,border:"1px solid "+G,borderRadius:10,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:20};
+  const bod={color:T.bodColor,fontSize:13,lineHeight:1.9};
+  const hl={background:"rgba(201,168,76,0.07)",borderLeft:"3px solid #C9A84C",borderRadius:"0 8px 8px 0",padding:"12px 16px",marginTop:12};
+
+  function Sec({title,sub,children}){return <div style={{marginBottom:24,borderBottom:"1px solid "+BR,paddingBottom:22}}><div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:12}}><span style={{fontSize:9,letterSpacing:3,color:G,textTransform:"uppercase"}}>{title}</span>{sub&&<span style={{fontSize:11,color:FA}}>— {sub}</span>}</div>{children}</div>;}
+  function Tag({children,c}){return <span style={{background:T.inputBackground,border:"1px solid rgba(201,168,76,0.4)",color:c||G,fontSize:9,letterSpacing:1.5,padding:"4px 11px",borderRadius:20,textTransform:"uppercase"}}>{children}</span>;}
+  function InfoCard({label,text,color}){return <div style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+(color||G)}}><div style={{fontSize:9,color:color||G,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>{label}</div><p style={{...bod,fontSize:12,color:DM}}>{text}</p></div>;}
+
   const[mode,setMode]=useState("main");
   const[stage,setStage]=useState("form");
   const[name,setName]=useState(""),  [dob,setDob]=useState(""),  [role,setRole]=useState(""),  [bg,setBg]=useState("");
   const[file,setFile]=useState(null),[rText,setRText]=useState("");
   const[report,setReport]=useState(null);
+  const[consent,setConsent]=useState(false);
   const[c1,setC1]=useState({name:"",dob:"",role:"",bg:"",file:null,rText:"",report:null});
   const[c2,setC2]=useState({name:"",dob:"",role:"",bg:"",file:null,rText:"",report:null});
   const[compat,setCompat]=useState(null);
   const fileRef=useRef(),cf1=useRef(),cf2=useRef();
   let liveNums=null;if(name&&dob){try{liveNums=calcNums(name,dob);}catch{liveNums=null;}}
+  const firstName=name?name.trim().split(" ")[0]:"";
 
-  function generate(){if(!name)return;const nums=(name&&dob)?calcNums(name,dob):null;setReport(buildReport(name,role,bg,rText,nums));setStage("report");}
+  function generate(){
+    if(!name)return;
+    const nums=(name&&dob)?calcNums(name,dob):null;
+    const r=buildReport(name,role,bg,rText,nums);
+    setReport(r);
+    if(consent)saveAnonymousReport(r);
+    setStage("report");
+  }
   function runCompat(){
     if(!c1.name||!c2.name)return;
-    const n1=(c1.name&&c1.dob)?calcNums(c1.name,c1.dob):null;const n2=(c2.name&&c2.dob)?calcNums(c2.name,c2.dob):null;
-    const r1=buildReport(c1.name,c1.role,c1.bg,c1.rText,n1);const r2=buildReport(c2.name,c2.role,c2.bg,c2.rText,n2);
-    setC1(p=>({...p,report:r1}));setC2(p=>({...p,report:r2}));setCompat(analyseCompatibility(r1,r2));setStage("compat");
+    const n1=(c1.name&&c1.dob)?calcNums(c1.name,c1.dob):null;
+    const n2=(c2.name&&c2.dob)?calcNums(c2.name,c2.dob):null;
+    const r1=buildReport(c1.name,c1.role,c1.bg,c1.rText,n1);
+    const r2=buildReport(c2.name,c2.role,c2.bg,c2.rText,n2);
+    setC1(p=>({...p,report:r1}));setC2(p=>({...p,report:r2}));
+    setCompat(analyseCompatibility(r1,r2));setStage("compat");
   }
-  function reset(){setStage("form");setName("");setDob("");setRole("");setBg("");setFile(null);setRText("");setReport(null);}
+  function reset(){setStage("form");setName("");setDob("");setRole("");setBg("");setFile(null);setRText("");setReport(null);setConsent(false);}
+
+  const ThemeBtn=()=>(
+    <button onClick={()=>setDark(d=>!d)} title={dark?"Switch to Light Mode":"Switch to Dark Mode"}
+      style={{position:"fixed",top:16,right:16,background:T.cardBackground,border:"1px solid "+BR,borderRadius:40,width:40,height:40,cursor:"pointer",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,boxShadow:T.shadow,transition:"all 0.2s"}}>
+      {dark?"☀️":"🌙"}
+    </button>
+  );
 
   const Nav=()=>(
-    <div style={{display:"flex",gap:4,marginBottom:24,background:DK,borderRadius:10,padding:4}}>
+    <div style={{display:"flex",gap:4,marginBottom:24,background:T.inputBackground,borderRadius:10,padding:4}}>
       {[["main","Individual Report"],["compat","Compatibility"]].map(([m,l])=>(
-        <button key={m} onClick={()=>{setMode(m);setStage("form");}} style={{flex:1,padding:"9px",background:mode===m?"linear-gradient(135deg,#C9A84C,#9a7030)":D3,border:"none",borderRadius:8,color:mode===m?DK:DM,fontSize:12,fontWeight:mode===m?600:400,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{l}</button>
+        <button key={m} onClick={()=>{setMode(m);setStage("form");}} style={{flex:1,padding:"9px",background:mode===m?"linear-gradient(135deg,#C9A84C,#9a7030)":T.navInactive,border:"none",borderRadius:8,color:mode===m?"#090E15":DM,fontSize:12,fontWeight:mode===m?600:400,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{l}</button>
       ))}
     </div>
   );
 
-  // ── FORM ────────────────────────────────────────
+  // ── FORM ─────────────────────────────────────────
   if(stage==="form") return(
-    <div style={pg}><div style={crd}>
+    <div style={pg}><ThemeBtn/><div style={crd}>
       <div style={{textAlign:"center",marginBottom:28}}>
         <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:12}}>Personal Intelligence Engine</div>
         <h1 style={{fontSize:38,color:TX,lineHeight:1.1,fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300}}>Know Your<br/><em style={{color:G}}>True Self</em></h1>
@@ -398,41 +463,97 @@ export default function App(){
       </div>
       <Nav/>
       {mode==="main"&&<>
-        <label style={lbl}>Full Name *</label>
-        <input style={inp} placeholder="Muhammad Hammad" value={name} onChange={e=>setName(e.target.value)}/>
-        <label style={lbl}>Date of Birth <span style={{color:FA,fontWeight:400}}>(unlocks numerology, element, life journey)</span></label>
+        <label style={lbl}>Your Full Name *</label>
+        <input style={inp} placeholder="e.g. Muhammad Hammad" value={name} onChange={e=>setName(e.target.value)} autoFocus/>
+
+        <label style={{...lbl,marginTop:18}}>
+          {firstName?`${firstName}, when were you born?`:"Date of Birth"}
+          <span style={{color:FA,fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:9}}> — unlocks numerology, element, life journey</span>
+        </label>
         <input style={inp} type="date" value={dob} onChange={e=>setDob(e.target.value)}/>
-        {liveNums&&<div style={{background:DK,borderRadius:10,padding:"12px 16px",marginTop:8,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+
+        {liveNums&&<div style={{background:T.inputBackground,borderRadius:10,padding:"12px 16px",marginTop:8,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center",border:"1px solid "+BR}}>
           {[["Life Path",liveNums.lp,G],["Expression",liveNums.expr,"#7C9CBF"],["Personal Year",liveNums.py,"#7DBF8A"]].map(([l,v,c])=>(
             <div key={l} style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:c,lineHeight:1}}>{v}</div><div style={{fontSize:8,color:FA,letterSpacing:1,textTransform:"uppercase",marginTop:3}}>{l}</div></div>
           ))}
           <div style={{marginLeft:"auto",textAlign:"center"}}><div style={{fontSize:12,color:"#7DBF8A",fontWeight:500}}>{liveNums.element}</div><div style={{fontSize:9,color:FA}}>{liveNums.sign}</div></div>
         </div>}
-        <label style={lbl}>Current Role</label>
-        <input style={inp} placeholder="Assistant Manager, EY Melbourne" value={role} onChange={e=>setRole(e.target.value)}/>
-        <label style={lbl}>Brief Context <span style={{color:FA,fontWeight:400}}>(optional)</span></label>
+
+        <label style={{...lbl,marginTop:18}}>{firstName?`${firstName}'s current role`:"Current Role"}</label>
+        <input style={inp} placeholder="e.g. Assistant Manager, EY Melbourne" value={role} onChange={e=>setRole(e.target.value)}/>
+
+        <label style={{...lbl,marginTop:18}}>
+          {firstName?`A bit about ${firstName}'s background`:"Brief Context"}
+          <span style={{color:FA,fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:9}}> — optional</span>
+        </label>
         <textarea style={{...inp,height:58,resize:"none"}} placeholder="6 years Big 4 audit, EY and PwC, IFRS specialist, building a side business..." value={bg} onChange={e=>setBg(e.target.value)}/>
-        <label style={lbl}>Resume / CV <span style={{color:FA,fontWeight:400}}>(PDF or TXT — enables career-specific insights)</span></label>
+
+        <label style={{...lbl,marginTop:18}}>
+          Resume / CV
+          <span style={{color:FA,fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:9}}> — PDF or TXT, enables career-specific insights</span>
+        </label>
         <input ref={fileRef} type="file" accept=".pdf,.txt" style={{display:"none"}} onChange={e=>{setFile(e.target.files[0]);extractText(e.target.files[0]).then(setRText);}}/>
-        <div onClick={()=>fileRef.current.click()} style={{background:DK,border:"2px dashed "+(file?G:BR),borderRadius:10,padding:16,textAlign:"center",cursor:"pointer",marginBottom:6}}>
+        <div onClick={()=>fileRef.current.click()} style={{background:T.inputBackground,border:"2px dashed "+(file?G:BR),borderRadius:10,padding:16,textAlign:"center",cursor:"pointer",marginBottom:12,transition:"border-color 0.2s"}}>
           {file?<><span style={{fontSize:14}}>✓ </span><span style={{color:G,fontSize:12,fontWeight:600}}>{file.name}</span><div style={{fontSize:10,color:FA,marginTop:2}}>Resume loaded — career section will be personalised</div></>:<><span style={{fontSize:18}}>📄</span><br/><span style={{color:FA,fontSize:12}}>Upload for career-specific insights (optional)</span></>}
         </div>
-        <div style={{background:DK,borderRadius:8,padding:"10px 14px",marginBottom:20,display:"flex",gap:8}}>
-          <span style={{fontSize:14,marginTop:1}}>🔒</span>
-          <p style={{fontSize:10,color:FA,lineHeight:1.6,margin:0}}><strong style={{color:"#4a7060"}}>Your data never leaves this browser.</strong> No servers, no storage, no accounts. Your CV is read once in JavaScript and discarded when you close the tab.</p>
+
+        {/* Privacy note + Consent */}
+        <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:16,border:"1px solid "+BR}}>
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            <span style={{fontSize:14,flexShrink:0}}>🔒</span>
+            <p style={{fontSize:10,color:FA,lineHeight:1.6,margin:0}}>
+              <strong style={{color:dark?"#4a9070":"#2a6a50"}}>Your data never leaves this browser.</strong> No servers, no accounts. Your CV is read once in JavaScript and discarded when you close the tab. The report is generated entirely locally.
+            </p>
+          </div>
+          <div style={{height:"1px",background:BR,marginBottom:12}}/>
+          <label style={{display:"flex",gap:10,cursor:"pointer",alignItems:"flex-start"}} onClick={()=>setConsent(c=>!c)}>
+            <div style={{marginTop:2,flexShrink:0,width:16,height:16,borderRadius:4,border:"2px solid "+(consent?G:BR),background:consent?"rgba(201,168,76,0.15)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s"}}>
+              {consent&&<span style={{fontSize:10,color:G,fontWeight:700}}>✓</span>}
+            </div>
+            <span style={{fontSize:10,color:FA,lineHeight:1.65,userSelect:"none"}}>
+              <strong style={{color:DM}}>Optional — help improve this engine.</strong> Store my anonymised personality patterns locally (MBTI, Enneagram, DISC, OCEAN scores only). Your name, date of birth, and CV are never saved. Data stays on your device. You can clear it anytime below.
+              {consent&&<span style={{display:"block",marginTop:4,color:G,fontSize:9}}> ✓ Patterns will be saved locally when you generate your report.</span>}
+            </span>
+          </label>
+          {consent&&<button onClick={(e)=>{e.stopPropagation();clearStoredData();alert("Stored data cleared.");}} style={{marginTop:8,fontSize:9,color:FA,background:"transparent",border:"none",cursor:"pointer",textDecoration:"underline",padding:0}}>Clear all stored data</button>}
         </div>
-        <button style={{...btnG,opacity:name?1:0.35}} disabled={!name} onClick={generate}>Generate Full Intelligence Report →</button>
+
+        <button style={{...btnG,opacity:name?1:0.35}} disabled={!name} onClick={generate}>
+          {firstName?`Generate ${firstName}'s Report →`:"Generate Intelligence Report →"}
+        </button>
       </>}
+
       {mode==="compat"&&<>
-        <p style={{fontSize:12,color:DM,marginBottom:20,lineHeight:1.6}}>Enter two people to analyse personality compatibility — professionally and personally.</p>
+        <p style={{fontSize:12,color:DM,marginBottom:10,lineHeight:1.6}}>Enter two people to analyse personality compatibility — professionally and personally.</p>
+        <p style={{fontSize:10,color:FA,marginBottom:16,lineHeight:1.6,background:T.inputBackground,padding:"8px 12px",borderRadius:8,border:"1px solid "+BR}}>
+          💡 Add date of birth for both people to unlock element-based compatibility. Without DOB the analysis uses career and personality data only.
+        </p>
         {[[c1,setC1,cf1,"Person 1"],[c2,setC2,cf2,"Person 2"]].map(([p,setter,ref,label])=>(
-          <div key={label} style={{background:DK,borderRadius:10,padding:16,marginBottom:10}}>
-            <div style={{fontSize:10,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>{label}</div>
-            <input style={{...inp,marginBottom:8}} placeholder="Full Name *" value={p.name} onChange={e=>setter(x=>({...x,name:e.target.value}))}/>
-            <input style={{...inp,marginBottom:8}} type="date" value={p.dob} onChange={e=>setter(x=>({...x,dob:e.target.value}))}/>
-            <input style={{...inp,marginBottom:8}} placeholder="Role (optional)" value={p.role} onChange={e=>setter(x=>({...x,role:e.target.value}))}/>
+          <div key={label} style={{background:T.inputBackground,borderRadius:12,padding:16,marginBottom:12,border:"1px solid "+BR}}>
+            <div style={{fontSize:10,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:14,fontWeight:600}}>{label}</div>
+
+            <label style={{...lbl,marginTop:0}}>Full Name *</label>
+            <input style={inp} placeholder="e.g. Ali Khan" value={p.name} onChange={e=>setter(x=>({...x,name:e.target.value}))}/>
+
+            <label style={{...lbl}}>
+              {p.name?p.name.split(" ")[0]+"'s date of birth":"Date of Birth"}
+              <span style={{color:FA,fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:9}}> — recommended</span>
+            </label>
+            <input style={inp} type="date" value={p.dob} onChange={e=>setter(x=>({...x,dob:e.target.value}))}/>
+            {p.name&&p.dob&&(()=>{try{const n=calcNums(p.name,p.dob);return(<div style={{background:T.pageBackground,borderRadius:8,padding:"7px 12px",marginTop:6,display:"flex",gap:14}}><span style={{fontSize:10,color:G}}>LP {n.lp}</span><span style={{fontSize:10,color:"#7DBF8A"}}>{n.element}</span><span style={{fontSize:10,color:"#7C9CBF"}}>{n.sign}</span><span style={{fontSize:10,color:FA}}>PY {n.py}</span></div>);}catch{return null;}})()}
+
+            <label style={{...lbl}}>
+              Current Role
+              <span style={{color:FA,fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:9}}> — optional but improves accuracy</span>
+            </label>
+            <input style={inp} placeholder="e.g. Software Developer" value={p.role} onChange={e=>setter(x=>({...x,role:e.target.value}))}/>
+
+            <label style={{...lbl}}>
+              Resume
+              <span style={{color:FA,fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:9}}> — optional</span>
+            </label>
             <input ref={ref} type="file" accept=".pdf,.txt" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];extractText(f).then(t=>setter(x=>({...x,file:f,rText:t})));}}/>
-            <div onClick={()=>ref.current.click()} style={{background:D2,border:"1px dashed "+(p.file?G:BR),borderRadius:8,padding:10,textAlign:"center",cursor:"pointer",fontSize:11,color:p.file?G:FA}}>
+            <div onClick={()=>ref.current.click()} style={{background:T.pageBackground,border:"1px dashed "+(p.file?G:BR),borderRadius:8,padding:10,textAlign:"center",cursor:"pointer",fontSize:11,color:p.file?G:FA}}>
               {p.file?"✓ "+p.file.name:"Upload Resume (optional)"}
             </div>
           </div>
@@ -442,25 +563,40 @@ export default function App(){
     </div></div>
   );
 
-  // ── COMPAT RESULT ───────────────────────────────
+  // ── COMPAT RESULT ────────────────────────────────
   if(stage==="compat"&&compat) return(
-    <div style={pg}><div style={crd}>
+    <div style={pg}><ThemeBtn/><div style={crd}>
       <div style={{textAlign:"center",marginBottom:24}}>
         <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:14}}>Compatibility Report</div>
         <h2 style={{fontSize:24,color:TX,fontFamily:"'Cormorant Garamond',serif",fontWeight:300,marginBottom:6}}>{c1.report.name} × {c2.report.name}</h2>
         <div style={{fontSize:52,fontWeight:700,color:G,lineHeight:1}}>{compat.overall}%</div>
         <div style={{fontSize:13,color:DM,marginTop:4}}>{compat.label} compatibility</div>
       </div>
+      {c1.report.nums&&c2.report.nums&&(
+        <div style={{background:T.inputBackground,borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-around",border:"1px solid "+BR,alignItems:"center"}}>
+          {[c1.report,c2.report].map((r,i)=>(
+            <div key={i} style={{textAlign:"center"}}>
+              <div style={{fontSize:11,color:G,fontWeight:600,marginBottom:2}}>{r.name.split(" ")[0]}</div>
+              <div style={{fontSize:10,color:"#7DBF8A"}}>{r.nums.element} · Life Path {r.nums.lp}</div>
+              <div style={{fontSize:9,color:FA}}>{r.nums.sign}</div>
+            </div>
+          ))}
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:18,color:G}}>⟷</div>
+            <div style={{fontSize:8,color:FA,marginTop:1,letterSpacing:1}}>element pairing</div>
+          </div>
+        </div>
+      )}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:22}}>
         {[["OCEAN",compat.oceanScore,"#7C9CBF"],["MBTI",compat.mbtiScore,G],["Enn.",compat.ennScore,"#7DBF8A"],["DISC",compat.discScore,"#C97A7A"]].map(([l,v,c])=>(
-          <div key={l} style={{background:DK,borderRadius:10,padding:"12px 8px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:c}}>{v}</div><div style={{fontSize:8,color:FA,letterSpacing:1,textTransform:"uppercase",marginTop:3}}>{l}</div></div>
+          <div key={l} style={{background:T.inputBackground,borderRadius:10,padding:"12px 8px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:c}}>{v}</div><div style={{fontSize:8,color:FA,letterSpacing:1,textTransform:"uppercase",marginTop:3}}>{l}</div></div>
         ))}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18}}>
         {[c1.report,c2.report].map((r,i)=>(
-          <div key={i} style={{background:DK,borderRadius:10,padding:14}}>
+          <div key={i} style={{background:T.inputBackground,borderRadius:10,padding:14}}>
             <div style={{fontSize:11,color:G,fontWeight:600,marginBottom:5}}>{r.name}</div>
-            <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:5}}>{[r.mbti,"E"+r.ennType,r.discLabel.slice(0,3)].map(t=><span key={t} style={{fontSize:9,color:DM,background:D2,padding:"2px 7px",borderRadius:4}}>{t}</span>)}</div>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:5}}>{[r.mbti,"E"+r.ennType,r.discLabel.slice(0,3),...(r.nums?[r.nums.element]:[])].map(t=><span key={t} style={{fontSize:9,color:DM,background:T.pageBackground,padding:"2px 7px",borderRadius:4}}>{t}</span>)}</div>
             <div style={{fontSize:10,color:FA,fontStyle:"italic"}}>{r.headline}</div>
           </div>
         ))}
@@ -472,13 +608,14 @@ export default function App(){
     </div></div>
   );
 
-  // ── REPORT ──────────────────────────────────────
+  // ── REPORT ───────────────────────────────────────
   if(stage==="report"&&report){
-    const{headline,tagline,summary,ocean,oceanText,mbti,mbtiData,ennType,ennData,discLabel,discDom,strengths,blind,wealthPsych,roadmap,growth,quote,commStyle,numSynthesis,nums,lpData,elemData,careerCtx,soulPurpose,relData,roleModels,dailyProtocol,decisionTiming,lifeJourney}=report;
+    const{headline,tagline,summary,ocean,oceanText,mbti,mbtiData,ennType,ennData,discLabel,strengths,blind,wealthPsych,roadmap,growth,quote,commStyle,numSynthesis,nums,lpData,elemData,careerCtx,soulPurpose,relData,roleModels,dailyProtocol,decisionTiming,lifeJourney}=report;
+    const headerBg=dark?"linear-gradient(160deg,#090E15 0%,#131F2D 100%)":"linear-gradient(160deg,#F0EDE6 0%,#E8E4DA 100%)";
     return(
-      <div style={pg}><div style={wid}>
+      <div style={pg}><ThemeBtn/><div style={wid}>
         {/* HEADER */}
-        <div style={{background:"linear-gradient(160deg,"+DK+" 0%,"+D3+" 100%)",borderRadius:"20px 20px 0 0",padding:"52px 36px 44px",textAlign:"center",borderBottom:"1px solid "+BR,marginBottom:28,position:"relative",overflow:"hidden"}}>
+        <div style={{background:headerBg,borderRadius:"20px 20px 0 0",padding:"52px 36px 44px",textAlign:"center",borderBottom:"1px solid "+BR,marginBottom:28,position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"radial-gradient(ellipse at 40% 50%,rgba(201,168,76,0.05) 0%,transparent 60%)",pointerEvents:"none"}}/>
           <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:14}}>Personal Intelligence Report</div>
           <h1 style={{fontSize:28,color:TX,margin:"8px 0 6px",fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300}}>{name}</h1>
@@ -488,7 +625,19 @@ export default function App(){
             {[mbti,"Enneagram "+ennType,"DISC — "+discLabel,...(nums?["Life Path "+nums.lp,nums.element]:[]),...(careerCtx.industry!=="general"?[careerCtx.industry]:[])].map(t=><Tag key={t}>{t}</Tag>)}
           </div>
           <div style={{display:"flex",justifyContent:"center",gap:14,flexWrap:"wrap"}}>
-            {Object.entries(ocean).map(([k,v])=><ScoreRing key={k} value={v} color={BC[k]} label={BL[k].slice(0,4)}/>)}
+            {Object.entries(ocean).map(([k,v])=>{
+              const r=20,circ=2*Math.PI*r,dash=(v/100)*circ;
+              return(
+                <div key={k} style={{textAlign:"center"}}>
+                  <svg width="52" height="52" viewBox="0 0 52 52">
+                    <circle cx="26" cy="26" r={r} fill="none" stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="4"/>
+                    <circle cx="26" cy="26" r={r} fill="none" stroke={BC[k]} strokeWidth="4" strokeDasharray={dash+" "+(circ-dash)} strokeLinecap="round" transform="rotate(-90 26 26)"/>
+                    <text x="26" y="30" textAnchor="middle" fontSize="11" fontWeight="600" fill={BC[k]} fontFamily="DM Sans,sans-serif">{v}</text>
+                  </svg>
+                  <div style={{fontSize:8,color:FA,letterSpacing:1,textTransform:"uppercase",marginTop:2}}>{BL[k].slice(0,4)}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -498,7 +647,23 @@ export default function App(){
           {/* Who You Are */}
           <Sec title="Who You Are">
             <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:22,alignItems:"center"}}>
-              <RadarChart ocean={ocean}/>
+              {/* Radar */}
+              {(()=>{
+                const dims=["O","C","E","A","N"],labels=["Open","Consc","Extra","Agree","Stable"],colors=["#7C9CBF","#C9A84C","#7DBF8A","#C97A7A","#B07DBF"];
+                const cx=110,cy=110,r=75,n=dims.length;
+                const angle=i=>(Math.PI*2*(i/n))-Math.PI/2;
+                const pt=(i,val)=>{const a=angle(i),pct=val/100;return[cx+r*pct*Math.cos(a),cy+r*pct*Math.sin(a)];};
+                const poly=dims.map((d,i)=>pt(i,ocean[d])).map(p=>p.join(",")).join(" ");
+                return(
+                  <svg viewBox="0 0 220 220" style={{width:"100%",maxWidth:200,display:"block",margin:"0 auto"}}>
+                    {[0.25,0.5,0.75,1].map(pct=>{const pts=dims.map((_,i)=>{const a=angle(i);return[cx+r*pct*Math.cos(a),cy+r*pct*Math.sin(a)].join(",")}).join(" ");return <polygon key={pct} points={pts} fill="none" stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="1"/>;})}
+                    {dims.map((_,i)=>{const[x,y]=pt(i,1);return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="1"/>;;})}
+                    <polygon points={poly} fill="rgba(201,168,76,0.12)" stroke="#C9A84C" strokeWidth="1.5" strokeLinejoin="round"/>
+                    {dims.map((d,i)=>{const[x,y]=pt(i,ocean[d]);return <circle key={d} cx={x} cy={y} r="4" fill={colors[i]}/>;;})}
+                    {dims.map((d,i)=>{const a=angle(i),lx=cx+(r+22)*Math.cos(a),ly=cy+(r+22)*Math.sin(a);return <text key={d} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize="8.5" fill={colors[i]} fontFamily="DM Sans,sans-serif" fontWeight="500">{labels[i]}</text>;})}
+                  </svg>
+                );
+              })()}
               <div>
                 <p style={bod}>{summary}</p>
                 {careerCtx.skills.length>0&&<div style={{marginTop:10,display:"flex",gap:5,flexWrap:"wrap"}}>
@@ -516,7 +681,7 @@ export default function App(){
                   <span style={{fontSize:10,color:BC[k],letterSpacing:1,fontWeight:500,textTransform:"uppercase"}}>{BL[k]}</span>
                   <span style={{fontSize:12,color:BC[k],fontWeight:600}}>{v}%</span>
                 </div>
-                <div style={{height:4,background:DK,borderRadius:2,overflow:"hidden",marginBottom:5}}><div style={{height:"100%",width:v+"%",background:BC[k],borderRadius:2}}/></div>
+                <div style={{height:4,background:T.inputBackground,borderRadius:2,overflow:"hidden",marginBottom:5}}><div style={{height:"100%",width:v+"%",background:BC[k],borderRadius:2}}/></div>
                 <p style={{...bod,fontSize:11,color:FA}}>{oceanText[k]}</p>
               </div>
             ))}
@@ -532,30 +697,30 @@ export default function App(){
           <Sec title={"Enneagram — Type "+ennType} sub={ennData.name}>
             <p style={{...bod,marginBottom:12}}>{ennData.core}</p>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              {[["Gift",ennData.gift,"#7DBF8A"],["Growth",ennData.growth,G],["Under Stress",ennData.stress,"#C97A7A"],["Wing",ennData.wing,"#7C9CBF"]].map(([l,t,c])=>(<InfoCard key={l} label={l} text={t} color={c}/>))}
+              {[["Gift",ennData.gift,"#7DBF8A"],["Growth",ennData.growth,G],["Under Stress",ennData.stress,"#C97A7A"],["Wing",ennData.wing,"#7C9CBF"]].map(([l,t,c])=><InfoCard key={l} label={l} text={t} color={c}/>)}
             </div>
           </Sec>
 
-          {/* Communication Style */}
+          {/* Communication */}
           <Sec title="Communication Style" sub={"How to work with "+name.split(" ")[0]}>
             <p style={bod}>{commStyle}</p>
           </Sec>
 
-          {/* Career Intelligence — now resume-powered */}
+          {/* Career */}
           <Sec title="Career Intelligence" sub={careerCtx.industry!=="general"?careerCtx.industry:undefined}>
-            <div style={{background:DK,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
+            <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
               <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Career Archetype</div>
               <div style={{fontSize:14,color:TX,fontFamily:"'Cormorant Garamond',serif",marginBottom:4}}>{careerCtx.archetype}</div>
               <p style={{...bod,fontSize:12,color:FA}}>{careerCtx.archetypeDesc}</p>
             </div>
             <div style={{marginBottom:12}}>
               <p style={{fontSize:9,color:FA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Strengths</p>
-              {strengths.map((s,i)=><div key={i} style={{fontSize:12,color:"#8aabbb",lineHeight:1.75,marginBottom:4}}>◆ {s}</div>)}
+              {strengths.map((s,i)=><div key={i} style={{fontSize:12,color:T.bodColor,lineHeight:1.75,marginBottom:4}}>◆ {s}</div>)}
             </div>
             {careerCtx.nextMoves.length>0&&<div style={{marginBottom:12}}>
               <p style={{fontSize:9,color:FA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Three Paths Forward</p>
               {careerCtx.nextMoves.map((m,i)=>(
-                <div key={i} style={{background:DK,borderRadius:9,padding:"12px 14px",marginBottom:8,borderLeft:"2px solid "+["#7C9CBF","#7DBF8A","#C97A7A"][i]}}>
+                <div key={i} style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",marginBottom:8,borderLeft:"2px solid "+["#7C9CBF","#7DBF8A","#C97A7A"][i]}}>
                   <div style={{fontSize:10,color:["#7C9CBF","#7DBF8A","#C97A7A"][i],fontWeight:600,marginBottom:3}}>0{i+1} — {m.title}</div>
                   <p style={{...bod,fontSize:12,color:FA}}>{m.desc}</p>
                 </div>
@@ -564,7 +729,7 @@ export default function App(){
             <div style={hl}><p style={bod}><strong style={{color:G}}>Blind spot: </strong>{blind}</p></div>
           </Sec>
 
-          {/* Strategic Roadmap */}
+          {/* Roadmap */}
           <Sec title="Strategic Roadmap">
             {roadmap.map((r,i)=>(
               <div key={i} style={{marginBottom:16,paddingLeft:14,borderLeft:"2px solid "+G,position:"relative"}}>
@@ -579,7 +744,7 @@ export default function App(){
           {nums&&lpData&&<Sec title="Numerology + Element">
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
               {[["Life Path",nums.lp,G],["Expression",nums.expr,"#7C9CBF"],["Soul Urge",nums.soul,"#7DBF8A"],["Birth Day",nums.bd,"#C97A7A"],["Personality",nums.pers,"#B07DBF"],["Personal Year",nums.py,G]].map(([l,v,c])=>(
-                <div key={l} style={{background:DK,border:"1px solid "+BR,borderRadius:10,padding:"12px 8px",textAlign:"center"}}>
+                <div key={l} style={{background:T.inputBackground,border:"1px solid "+BR,borderRadius:10,padding:"12px 8px",textAlign:"center"}}>
                   <div style={{fontSize:26,fontWeight:700,color:c,lineHeight:1,fontFamily:"'Cormorant Garamond',serif"}}>{v}</div>
                   <div style={{fontSize:8,color:FA,letterSpacing:1.5,textTransform:"uppercase",marginTop:4}}>{l}</div>
                 </div>
@@ -591,19 +756,22 @@ export default function App(){
             {numSynthesis&&<div style={{...hl,marginTop:8}}><p style={bod}>{numSynthesis}</p></div>}
           </Sec>}
 
-          {/* Decision Timing (Element-based) */}
+          {/* Decision Timing */}
           {decisionTiming&&<Sec title="Element-Based Decision Timing" sub="When your energy peaks">
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-              <InfoCard label="Peak Hours" text={decisionTiming.peak} color="🕐"/>
-              <InfoCard label="Lucky Colours" text={decisionTiming.lucky} color={G}/>
+              <InfoCard label="Peak Hours" text={decisionTiming.peak} color={G}/>
+              <InfoCard label="Lucky Colours" text={decisionTiming.lucky} color="#7C9CBF"/>
             </div>
             <p style={bod}>{decisionTiming.decision}</p>
-            {elemData&&<div style={{...hl,marginTop:10}}><p style={{...bod,fontSize:12}}><strong style={{color:"#7DBF8A"}}>Best seasons: </strong>{elemData.season}</p><p style={{...bod,fontSize:12,marginTop:6}}><strong style={{color:"#C97A7A"}}>Watch out: </strong>{elemData.avoid}</p></div>}
+            {elemData&&<div style={{...hl,marginTop:10}}>
+              <p style={{...bod,fontSize:12}}><strong style={{color:"#7DBF8A"}}>Best seasons: </strong>{elemData.season}</p>
+              <p style={{...bod,fontSize:12,marginTop:6}}><strong style={{color:"#C97A7A"}}>Watch out: </strong>{elemData.avoid}</p>
+            </div>}
           </Sec>}
 
           {/* Soul Purpose */}
           {soulPurpose&&<Sec title="Soul Purpose" sub={soulPurpose.missionType}>
-            <div style={{background:DK,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
+            <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
               <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Core Mission</div>
               <p style={bod}>{soulPurpose.mission}</p>
             </div>
@@ -611,7 +779,7 @@ export default function App(){
               <InfoCard label="The Lesson" text={soulPurpose.lesson} color="#7C9CBF"/>
               <InfoCard label="Your Contribution" text={soulPurpose.contribution} color="#7DBF8A"/>
             </div>
-            <div style={hl}><p style={{...bod,fontSize:12}}><strong style={{color:G}}>Daily alignment practice: </strong>{soulPurpose.daily}</p></div>
+            <div style={hl}><p style={{...bod,fontSize:12}}><strong style={{color:G}}>Daily alignment: </strong>{soulPurpose.daily}</p></div>
           </Sec>}
 
           {/* Daily Protocol */}
@@ -623,9 +791,9 @@ export default function App(){
             <div style={{marginTop:8}}><InfoCard label="Intellectual Discernment" text={dailyProtocol.intellectual} color="#7C9CBF"/></div>
           </Sec>
 
-          {/* Wealth Psychology */}
+          {/* Wealth */}
           <Sec title="Wealth Psychology" sub={discLabel+" DISC profile"}>
-            <div style={{background:DK,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid "+G}}>
+            <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid "+G}}>
               <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Core Wealth Frequency</div>
               <p style={bod}>{wealthPsych.frequency}</p>
             </div>
@@ -633,7 +801,7 @@ export default function App(){
             <div style={{marginTop:8}}><InfoCard label="Tailored Strategy" text={wealthPsych.strategy} color="#7DBF8A"/></div>
           </Sec>
 
-          {/* Relationship Dynamics */}
+          {/* Relationships */}
           {relData&&<Sec title="Relationship Dynamics" sub={nums?.element+" Element"}>
             <p style={{...bod,marginBottom:12}}>{relData.ideal}</p>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
@@ -647,7 +815,7 @@ export default function App(){
           {lifeJourney&&<Sec title="Life Journey" sub="Career phases and trajectory">
             {lifeJourney.map((p,i)=>(
               <div key={i} style={{marginBottom:14,paddingLeft:14,borderLeft:"2px solid "+G,position:"relative"}}>
-                <div style={{position:"absolute",left:-5,top:5,width:8,height:8,borderRadius:"50%",background:i===lifeJourney.length-2?G:D3,border:"2px solid "+G}}/>
+                <div style={{position:"absolute",left:-5,top:5,width:8,height:8,borderRadius:"50%",background:i===lifeJourney.length-2?G:T.inputBackground,border:"2px solid "+G}}/>
                 <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",fontWeight:600,marginBottom:2}}>{p.icon} {p.year}</div>
                 <div style={{fontSize:12,color:TX,marginBottom:3,fontFamily:"'Cormorant Garamond',serif"}}>{p.title}</div>
                 <p style={{...bod,fontSize:11,color:FA}}>{p.desc}</p>
@@ -655,11 +823,11 @@ export default function App(){
             ))}
           </Sec>}
 
-          {/* Strategic Role Models */}
+          {/* Role Models */}
           {roleModels&&<Sec title="Strategic Role Models" sub={nums?.element+" element archetypes"}>
-            <p style={{...bod,fontSize:12,color:FA,marginBottom:14}}>To accelerate your growth, model the energy of Disciplined Visionaries who used your elemental profile to build massive, enduring impact.</p>
+            <p style={{...bod,fontSize:12,color:FA,marginBottom:14}}>Model the energy of Disciplined Visionaries who used your elemental profile to build massive, enduring impact.</p>
             {roleModels.models.map((m,i)=>(
-              <div key={i} style={{background:DK,borderRadius:9,padding:"12px 14px",marginBottom:8,display:"flex",gap:12,alignItems:"flex-start"}}>
+              <div key={i} style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",marginBottom:8,display:"flex",gap:12,alignItems:"flex-start"}}>
                 <div style={{fontSize:18,fontWeight:700,color:G,fontFamily:"'Cormorant Garamond',serif",lineHeight:1,minWidth:20}}>{i+1}</div>
                 <div>
                   <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:3}}>
@@ -674,21 +842,20 @@ export default function App(){
 
           {/* Growth Edges */}
           <Sec title="Growth Edges">
-            {growth.map((g,i)=><div key={i} style={{fontSize:12,color:"#8aabbb",lineHeight:1.75,marginBottom:8,paddingLeft:14,borderLeft:"2px solid "+BR}}>▸ {g}</div>)}
+            {growth.map((g,i)=><div key={i} style={{fontSize:12,color:T.bodColor,lineHeight:1.75,marginBottom:8,paddingLeft:14,borderLeft:"2px solid "+BR}}>▸ {g}</div>)}
           </Sec>
 
           {/* Quote */}
-          {quote&&<div style={{background:"linear-gradient(135deg,"+DK+","+D3+")",border:"1px solid rgba(201,168,76,0.25)",borderRadius:14,padding:"28px 28px",textAlign:"center",marginBottom:22,position:"relative",overflow:"hidden"}}>
+          {quote&&<div style={{background:dark?"linear-gradient(135deg,#090E15,#131F2D)":"linear-gradient(135deg,#F0EDE6,#E8E4DA)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:14,padding:"28px",textAlign:"center",marginBottom:22,position:"relative",overflow:"hidden"}}>
             <div style={{fontSize:40,color:"rgba(201,168,76,0.12)",fontFamily:"Georgia,serif",position:"absolute",top:8,left:18,lineHeight:1}}>"</div>
             <p style={{fontSize:15,color:TX,fontStyle:"italic",lineHeight:1.85,margin:"0 0 10px",fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300,position:"relative",zIndex:1}}>"{quote}"</p>
             <p style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase"}}>— {headline}</p>
           </div>}
 
-          <div style={{background:DK,borderRadius:8,padding:"10px 14px",marginBottom:20,display:"flex",gap:8}}>
+          <div style={{background:T.inputBackground,borderRadius:8,padding:"10px 14px",marginBottom:20,display:"flex",gap:8,border:"1px solid "+BR}}>
             <span style={{fontSize:14}}>🔒</span>
-            <p style={{fontSize:10,color:FA,lineHeight:1.6,margin:0}}>Your data was never sent anywhere. This entire report was generated locally in your browser. Closing this tab deletes everything permanently.</p>
+            <p style={{fontSize:10,color:FA,lineHeight:1.6,margin:0}}>Your data was never sent anywhere. This report was generated entirely in your browser. Closing this tab deletes everything.{consent&&" Your anonymous patterns were saved locally per your preference."}</p>
           </div>
-
           <button style={btnG} onClick={reset}>Generate Another Report</button>
         </div>
       </div></div>

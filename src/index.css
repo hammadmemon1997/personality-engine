@@ -1,11 +1,29 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #0B1520; font-family: Georgia, serif; }
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold: #C9A84C;
+  --gold-light: #e8c96e;
+  --gold-dim: rgba(201,168,76,0.12);
+  --dark: #090E15;
+  --dark2: #0E1720;
+  --dark3: #131F2D;
+  --dark4: #1A2B3C;
+  --border: rgba(255,255,255,0.07);
+  --text: #F0EAD6;
+  --text-dim: #7a8fa0;
+  --text-faint: #2e4050;
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
 }
-@keyframes bar {
-  from { width: 0; }
-  to   { width: var(--w); }
-}
+
+html { scroll-behavior: smooth; }
+body { background: var(--dark); font-family: var(--font-body); color: var(--text); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100% { opacity:.4; } 50% { opacity:1; } }
+@keyframes barGrow { from { width: 0; } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes radarDraw { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }

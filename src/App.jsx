@@ -783,7 +783,7 @@ export default function App(){
   if(stage==="form") return(
     <div style={pg}><ThemeBtn/><div style={crd}>
       <div style={{textAlign:"center",marginBottom:20}}>
-        <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:12}}>Personal Intelligence Engine</div>
+        <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:12}}>Personal Intelligence Engine · v8</div>
         <h1 style={{fontSize:38,color:TX,lineHeight:1.1,fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300}}>Know Your<br/><em style={{color:G}}>True Self</em></h1>
         <p style={{fontSize:13,color:DM,lineHeight:1.7,marginTop:10}}>Big Five · MBTI · Enneagram · DISC · Numerology · Soul Purpose</p>
       </div>

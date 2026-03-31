@@ -355,7 +355,7 @@ function scoreText(text){
 function buildReport(name,role,bg,resumeText,nums){
   const combined=[name,role,bg,resumeText].filter(Boolean).join(" ");
   const scores=scoreText(combined);
-  const{ocean,ennType,discDom,discLabel,mbti}=scores;
+  const{ocean,ennType,ennType2,ennRawScores,discDom,discLabel,mbti}=scores;
   const mbtiData=MBTI_MAP[mbti]||MBTI_MAP["ISTJ"];
   const ennData=ENN_DATA[ennType];
   const lpData=nums?LP_DATA[nums.lp]||LP_DATA[1]:null;

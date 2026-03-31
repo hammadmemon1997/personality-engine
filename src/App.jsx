@@ -636,7 +636,7 @@ export default function App(){
     }catch(e){console.error(e);}
   }
 
-  // ── 6. URL HASH (useEffect after all state) ──────
+  // ── 6. URL HASH ──────────────────────────────────
   useEffect(()=>{
     const hash=window.location.hash.slice(1);
     if(!hash)return;
@@ -652,38 +652,45 @@ export default function App(){
     }
   },[]);
 
-  // ── 7. GENERATE (with robust error handling) ─────
+  // ── 7. LOADING ANIMATION ─────────────────────────
+  // useEffect watches loading flag — advances steps then transitions to report
   const LOAD_STEPS=["Parsing your profile...","Scoring OCEAN dimensions...","Deriving MBTI from Big Five...","Matching Enneagram patterns...","Calculating numerology...","Building career insights...","Your report is ready ✓"];
 
+  useEffect(()=>{
+    if(!loading)return;
+    if(loadStep>=LOAD_STEPS.length-1){
+      // All animation steps done — transition to report
+      const t=setTimeout(()=>{setLoading(false);setStage("report");},400);
+      return()=>clearTimeout(t);
+    }
+    // Advance to next step
+    const t=setTimeout(()=>setLoadStep(s=>s+1),380);
+    return()=>clearTimeout(t);
+  },[loading,loadStep]);
+
+  // ── 8. GENERATE ───────────────────────────────────
   function generate(){
     if(!name)return;
-    setLoading(true);setLoadStep(0);setError(null);
-    let step=0;
-    const timer=setInterval(()=>{
-      step++;
-      setLoadStep(step);
-      if(step>=LOAD_STEPS.length-1){
-        clearInterval(timer);
-        try{
-          const nums=(name&&dob)?calcNums(name,dob):null;
-          const extra=buildExtraContext();
-          const r=buildReport(name,role||"",bg||"",(rText||"")+" "+(extra||""),nums);
-          if(!r)throw new Error("buildReport returned null");
-          setReport(r);
-          try{
-            if(consent)saveAnonymousReport(r);
-            const hash=encodeShare({n:name,d:dob,r:role,b:bg,li:linkedinUrl||""});
-            if(hash)window.history.replaceState(null,null,"#"+hash);
-          }catch{}
-          setTimeout(()=>{setLoading(false);setStage("report");},500);
-        }catch(err){
-          console.error("Generation error:",err);
-          setLoading(false);
-          setError("Something went wrong: "+err.message+". Try adding more context about your role.");
-          setStage("form");
-        }
-      }
-    },380);
+    setError(null);
+    // Build report synchronously FIRST — before showing loading screen
+    try{
+      const nums=(name&&dob)?calcNums(name,dob):null;
+      const extra=buildExtraContext();
+      const r=buildReport(name,role||"",bg||"",(rText||"")+" "+(extra||""),nums);
+      if(!r)throw new Error("buildReport returned empty");
+      setReport(r);
+      try{
+        if(consent)saveAnonymousReport(r);
+        const hash=encodeShare({n:name,d:dob,r:role,b:bg,li:linkedinUrl||""});
+        if(hash)window.history.replaceState(null,null,"#"+hash);
+      }catch{}
+      // Now start the loading animation (useEffect above handles stepping + transition)
+      setLoadStep(0);
+      setLoading(true);
+    }catch(err){
+      console.error("Generation error:",err);
+      setError("Could not generate report: "+err.message+". Please try again.");
+    }
   }
 
   // ── 8. INNER COMPONENTS (after all state/functions) ──

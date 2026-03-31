@@ -652,7 +652,7 @@ export default function App(){
         const shareData={n:name,d:dob,r:role,b:bg,li:linkedinUrl||""};
         const hash=encodeShare(shareData);
         if(hash)window.history.replaceState(null,null,"#"+hash);
-        setTimeout(()=>{setLoading(false);setStage("report");},400);
+        setTimeout(()=>{setLoading(false);setStage("report");},600);
       }
     },420);
   }
@@ -710,10 +710,10 @@ export default function App(){
         <div style={{position:"relative",width:80,height:80,margin:"0 auto 28px"}}>
           <svg width="80" height="80" viewBox="0 0 80 80">
             <circle cx="40" cy="40" r="34" fill="none" stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="5"/>
-            <circle cx="40" cy="40" r="34" fill="none" stroke={G} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(loadStep/LOAD_STEPS.length)*213} 213`} transform="rotate(-90 40 40)" style={{transition:"stroke-dasharray 0.4s ease"}}/>
+            <circle cx="40" cy="40" r="34" fill="none" stroke={G} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(loadStep/Math.max(LOAD_STEPS.length-1,1))*213} 213`} transform="rotate(-90 40 40)" style={{transition:"stroke-dasharray 0.4s ease"}}/>
           </svg>
           <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:G,fontFamily:"'DM Sans',sans-serif"}}>
-            {Math.round((loadStep/LOAD_STEPS.length)*100)}%
+            {Math.round((loadStep/Math.max(LOAD_STEPS.length-1,1))*100)}%
           </div>
         </div>
         {/* Steps */}

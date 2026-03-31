@@ -641,20 +641,35 @@ export default function App(){
     setLoading(true);setLoadStep(0);
     let step=0;
     const timer=setInterval(()=>{
-      step++;setLoadStep(step);
+      step++;
+      setLoadStep(step);
       if(step>=LOAD_STEPS.length-1){
         clearInterval(timer);
-        const nums=(name&&dob)?calcNums(name,dob):null;
-        const extra=buildExtraContext();
-        const r=buildReport(name,role,bg,rText+" "+extra,nums);
-        setReport(r);
-        if(consent)saveAnonymousReport(r);
-        const shareData={n:name,d:dob,r:role,b:bg,li:linkedinUrl||""};
-        const hash=encodeShare(shareData);
-        if(hash)window.history.replaceState(null,null,"#"+hash);
-        setTimeout(()=>{setLoading(false);setStage("report");},600);
+        try{
+          const nums=(name&&dob)?calcNums(name,dob):null;
+          const extra=buildExtraContext();
+          const r=buildReport(name,role,bg,(rText||"")+" "+(extra||""),nums);
+          setReport(r);
+          if(consent){try{saveAnonymousReport(r);}catch{}}
+          const shareData={n:name,d:dob,r:role,b:bg,li:linkedinUrl||""};
+          const hash=encodeShare(shareData);
+          if(hash){try{window.history.replaceState(null,null,"#"+hash);}catch{}}
+          setTimeout(()=>{setLoading(false);setStage("report");},600);
+        }catch(err){
+          console.error("Report generation error:",err);
+          // Fallback: try again with minimal input
+          try{
+            const r=buildReport(name,"","","",null);
+            setReport(r);
+            setTimeout(()=>{setLoading(false);setStage("report");},300);
+          }catch(err2){
+            console.error("Fallback also failed:",err2);
+            setLoading(false);
+            alert("Something went wrong generating your report. Please try again.");
+          }
+        }
       }
-    },420);
+    },380);
   }
 
   function copyShareLink(){

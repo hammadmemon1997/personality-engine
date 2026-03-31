@@ -99,7 +99,7 @@ function printToPDF(report, dob) {
   const BC={O:"#7C9CBF",C:"#C9A84C",E:"#7DBF8A",A:"#C97A7A",N:"#B07DBF"};
   const BL={O:"Openness",C:"Conscientiousness",E:"Extraversion",A:"Agreeableness",N:"Neuroticism"};
   const bars=Object.entries(ocean).map(([k,v])=>`<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:10px;color:#888;letter-spacing:1.5px;text-transform:uppercase;font-family:DM Sans,sans-serif">${BL[k]}</span><span style="font-size:12px;color:${BC[k]};font-weight:600">${v}%</span></div><div style="height:4px;background:#f0ece4;border-radius:2px"><div style="height:100%;width:${v}%;background:${BC[k]};border-radius:2px"></div></div></div>`).join("");
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Personal Intelligence Report — ${name}</title>
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Personal Intelligence — Powered by Hammad</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -137,7 +137,7 @@ p{color:#444;line-height:1.85}
 .skill-tag{display:inline-block;background:#EEF5F0;border:1px solid #c8e0cc;color:#4a7060;font-size:9px;padding:2px 8px;border-radius:4px;margin:2px}
 </style></head><body>
 <div class="cover">
-<div class="eyebrow">Personal Intelligence Report · ${new Date().toLocaleDateString("en-AU",{day:"numeric",month:"long",year:"numeric"})}</div>
+<div class="eyebrow">Personal Intelligence — Powered by Hammad · ${new Date().toLocaleDateString("en-AU",{day:"numeric",month:"long",year:"numeric"})}</div>
 <div class="cname">${name}</div><div class="arch">${headline}</div><p class="ctag">${tagline}</p>
 <div class="chips"><span class="chip">${mbti}</span><span class="chip">Enneagram ${ennType}</span><span class="chip">DISC — ${discLabel}</span>${nums?`<span class="chip">Life Path ${nums.lp}</span><span class="chip">${nums.element}</span>`:""}</div>
 </div>
@@ -670,6 +670,8 @@ export default function App(){
   const[loadStep,setLoadStep]=useState(0);
   const[collapsed,setCollapsed]=useState({});
   const[rating,setRating]=useState(0);
+  const[toast,setToast]=useState(null); // {msg, type: 'success'|'info'|'warn'}
+  const[cvWords,setCvWords]=useState(0); // word count of CV+LinkedIn combined
   const[ratingDone,setRatingDone]=useState(false);
   const[activeSection,setActiveSection]=useState(0);
   const[c1,setC1]=useState({name:"",dob:"",role:"",bg:"",file:null,rText:"",report:null});
@@ -706,11 +708,16 @@ export default function App(){
 
   function toggleSection(key){setCollapsed(c=>({...c,[key]:!c[key]}));}
 
+  function showToast(msg, type="success"){
+    setToast({msg,type});
+    setTimeout(()=>setToast(null),2200);
+  }
+
   function copyInsight(id,text){
     if(!text)return;
-    navigator.clipboard.writeText(text).then(()=>{
-      setCopiedId(id);setTimeout(()=>setCopiedId(null),1800);
-    }).catch(()=>{});
+    navigator.clipboard.writeText(text)
+      .then(()=>{ setCopiedId(id); showToast("Copied to clipboard"); setTimeout(()=>setCopiedId(null),1800); })
+      .catch(()=>{});
   }
 
   function copyShareLink(){
@@ -719,9 +726,18 @@ export default function App(){
     if(!hash)return;
     const url=window.location.origin+window.location.pathname+"#"+hash;
     navigator.clipboard.writeText(url)
-      .then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2500);})
+      .then(()=>{setCopied(true);showToast("Share link copied!","success");setTimeout(()=>setCopied(false),2500);})
       .catch(()=>{try{prompt("Copy this link:",url);}catch{}});
   }
+
+  // Compute CV word count (CV file + LinkedIn paste combined)
+  useEffect(()=>{
+    const words = ((rText||"")+" "+(linkedinPaste||"")).trim().split(/\s+/).filter(w=>w.length>2).length;
+    setCvWords(words);
+  },[rText,linkedinPaste]);
+
+  // CV tier: 'none' | 'partial' (50-149 words) | 'full' (150+ words)
+  const cvTier = cvWords >= 150 ? "full" : cvWords >= 50 ? "partial" : "none";
 
   function reset(){
     setStage("form");setName("");setDob("");setRole("");setBg("");
@@ -730,6 +746,7 @@ export default function App(){
     setLinkedinPaste("");setShowLinkedin(false);setCopied(false);
     setCopiedId(null);setLoading(false);setLoadStep(0);
     setCollapsed({});setRating(0);setRatingDone(false);setActiveSection(0);
+    setToast(null);setCvWords(0);
     try{window.history.replaceState(null,null,window.location.pathname);}catch{}
   }
 
@@ -849,6 +866,12 @@ export default function App(){
     </button>
   );
 
+  const Toast=()=>toast?(
+    <div style={{position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:toast.type==="success"?"#1a3a2a":"#3a2a1a",border:`1px solid ${toast.type==="success"?"#7DBF8A":"#C9A84C"}`,borderRadius:24,padding:"9px 18px",fontSize:12,color:toast.type==="success"?"#7DBF8A":"#C9A84C",zIndex:9999,boxShadow:"0 4px 20px rgba(0,0,0,0.3)",whiteSpace:"nowrap",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:7,transition:"all 0.3s",pointerEvents:"none"}}>
+      <span>{toast.type==="success"?"✓":"ℹ"}</span>{toast.msg}
+    </div>
+  ):null;
+
   const Nav=()=>(
     <div style={{display:"flex",gap:4,marginBottom:24,background:T.inputBackground,borderRadius:10,padding:4}}>
       {[["main","Individual Report"],["compat","Compatibility"]].map(([m,l])=>(
@@ -859,7 +882,7 @@ export default function App(){
 
   // ── 10. LOADING SCREEN ────────────────────────────
   if(loading) return(
-    <div style={{...pg,alignItems:"center"}}><ThemeBtn/>
+    <div style={{...pg,alignItems:"center"}}><ThemeBtn/><Toast/>
       <div style={{...crd,textAlign:"center",padding:"52px 32px"}}>
         <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:28}}>Generating Report</div>
         <div style={{position:"relative",width:80,height:80,margin:"0 auto 28px"}}>
@@ -890,9 +913,9 @@ export default function App(){
   );
 
   if(stage==="form") return(
-    <div style={pg}><ThemeBtn/><div style={crd}>
+    <div style={pg}><ThemeBtn/><Toast/><div style={crd}>
       <div style={{textAlign:"center",marginBottom:20}}>
-        <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:12}}>Personal Intelligence Engine · v8</div>
+        <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:12}}>Personal Intelligence — Powered by Hammad</div>
         <h1 style={{fontSize:38,color:TX,lineHeight:1.1,fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300}}>Know Your<br/><em style={{color:G}}>True Self</em></h1>
         <p style={{fontSize:13,color:DM,lineHeight:1.7,marginTop:10}}>Big Five · MBTI · Enneagram · DISC · Numerology · Soul Purpose</p>
       </div>
@@ -935,44 +958,71 @@ export default function App(){
           <div style={{marginLeft:"auto",textAlign:"center"}}><div style={{fontSize:12,color:"#7DBF8A",fontWeight:500}}>{liveNums.element}</div><div style={{fontSize:9,color:FA}}>{liveNums.sign}</div></div>
         </div>}
 
-        <label style={{...lbl,marginTop:18}}>{firstName?`${firstName}'s current role`:"Current Role"}</label>
+        <label style={{...lbl,marginTop:18}}>Your Current Role</label>
         <input style={inp} placeholder="e.g. Assistant Manager, EY Melbourne" value={role} onChange={e=>setRole(e.target.value)}/>
 
         <label style={{...lbl,marginTop:18}}>
-          {firstName?`A bit about ${firstName}'s background`:"Brief Context"}
+          Brief Background Context
           <span style={{color:FA,fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:9}}> — optional</span>
         </label>
         <textarea style={{...inp,height:58,resize:"none"}} placeholder="6 years Big 4 audit, EY and PwC, IFRS specialist, building a side business..." value={bg} onChange={e=>setBg(e.target.value)}/>
 
         <label style={{...lbl,marginTop:18}}>
           Resume / CV
-          <span style={{color:FA,fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:9}}> — PDF or TXT, enables career-specific insights</span>
+          <span style={{color:FA,fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:9}}> — required for full career analysis</span>
         </label>
         <input ref={fileRef} type="file" accept=".pdf,.txt" style={{display:"none"}} onChange={e=>{setFile(e.target.files[0]);extractText(e.target.files[0]).then(setRText);}}/>
-        <div onClick={()=>fileRef.current.click()} style={{background:T.inputBackground,border:"2px dashed "+(file?G:BR),borderRadius:10,padding:16,textAlign:"center",cursor:"pointer",marginBottom:12,transition:"border-color 0.2s"}}>
-          {file?<><span style={{fontSize:14}}>✓ </span><span style={{color:G,fontSize:12,fontWeight:600}}>{file.name}</span><div style={{fontSize:10,color:FA,marginTop:2}}>Resume loaded — career section will be personalised</div></>:<><span style={{fontSize:18}}>📄</span><br/><span style={{color:FA,fontSize:12}}>Upload for career-specific insights (optional)</span></>}
+        <div onClick={()=>fileRef.current.click()}
+          style={{background:T.inputBackground,border:`2px dashed ${cvTier==="full"?"#7DBF8A":cvTier==="partial"?G:BR}`,borderRadius:10,padding:16,textAlign:"center",cursor:"pointer",marginBottom:8,transition:"all 0.2s"}}>
+          {file
+            ? <><span style={{fontSize:14,color:"#7DBF8A"}}>✓ </span><span style={{color:"#7DBF8A",fontSize:12,fontWeight:600}}>{file.name}</span><div style={{fontSize:10,color:FA,marginTop:2}}>{rText.trim().split(/\s+/).filter(w=>w.length>2).length} words loaded</div></>
+            : <><span style={{fontSize:18}}>📄</span><br/><span style={{color:FA,fontSize:12}}>Upload PDF or TXT resume</span></>}
         </div>
 
         {/* LinkedIn Import */}
         <div style={{marginBottom:12}}>
-          <button onClick={()=>setShowLinkedin(s=>!s)} style={{width:"100%",padding:"10px 14px",background:T.inputBackground,border:"1px solid "+BR,borderRadius:9,color:DM,fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:8,textAlign:"left"}}>
+          <button onClick={()=>setShowLinkedin(s=>!s)}
+            style={{width:"100%",padding:"10px 14px",background:T.inputBackground,border:"1px solid "+BR,borderRadius:9,color:DM,fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:8,textAlign:"left"}}>
             <span style={{fontSize:14}}>🔗</span>
-            <span>Import from LinkedIn <span style={{color:FA,fontSize:10}}>(optional — paste your About + Experience)</span></span>
+            <span>Or paste from LinkedIn <span style={{color:FA,fontSize:10}}>(About + Experience)</span></span>
             <span style={{marginLeft:"auto",color:FA}}>{showLinkedin?"▲":"▼"}</span>
           </button>
           {showLinkedin&&<div style={{background:T.inputBackground,border:"1px solid "+BR,borderRadius:"0 0 9px 9px",padding:"14px",marginTop:-1}}>
-            <input style={{...inp,marginBottom:8,fontSize:12}} placeholder="LinkedIn profile URL (e.g. linkedin.com/in/yourname)" value={linkedinUrl} onChange={e=>setLinkedinUrl(e.target.value)}/>
+            <input style={{...inp,marginBottom:8,fontSize:12}} placeholder="linkedin.com/in/yourname" value={linkedinUrl} onChange={e=>setLinkedinUrl(e.target.value)}/>
             <p style={{fontSize:10,color:FA,lineHeight:1.6,marginBottom:8}}>
-              💡 LinkedIn blocks direct fetching (CORS). To import your profile: open LinkedIn → copy your <strong style={{color:DM}}>About section + top 3 job descriptions</strong> → paste below. This improves career insight accuracy significantly.
+              💡 Copy your LinkedIn <strong style={{color:DM}}>About section + top 3 job descriptions</strong> and paste below. Minimum 150 words for full career analysis.
             </p>
-            <textarea style={{...inp,height:90,resize:"none",fontSize:11}} placeholder="Paste your LinkedIn About section and work experience here..." value={linkedinPaste} onChange={e=>setLinkedinPaste(e.target.value)}/>
-            {linkedinPaste&&<p style={{fontSize:10,color:"#7DBF8A",marginTop:4}}>✓ {linkedinPaste.split(" ").length} words imported — career scoring will improve</p>}
+            <textarea style={{...inp,height:90,resize:"none",fontSize:11}} placeholder="Paste your LinkedIn About + work experience here..." value={linkedinPaste} onChange={e=>setLinkedinPaste(e.target.value)}/>
+            {linkedinPaste&&<p style={{fontSize:10,color:linkedinPaste.split(/\s+/).filter(w=>w.length>2).length>=150?"#7DBF8A":G,marginTop:4}}>
+              {linkedinPaste.split(/\s+/).filter(w=>w.length>2).length} / 150 words {linkedinPaste.split(/\s+/).filter(w=>w.length>2).length>=150?"✓ Full analysis unlocked":"— keep going for full career analysis"}
+            </p>}
           </div>}
+        </div>
+
+        {/* CV Tier Status Banner */}
+        <div style={{borderRadius:9,padding:"10px 14px",marginBottom:12,
+          background:cvTier==="full"?"rgba(125,191,138,0.08)":cvTier==="partial"?"rgba(201,168,76,0.08)":"rgba(201,100,80,0.06)",
+          border:`1px solid ${cvTier==="full"?"rgba(125,191,138,0.35)":cvTier==="partial"?"rgba(201,168,76,0.35)":"rgba(201,100,80,0.25)"}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:16}}>{cvTier==="full"?"✅":cvTier==="partial"?"⚡":"⚠️"}</span>
+            <div>
+              <div style={{fontSize:10,fontWeight:700,color:cvTier==="full"?"#7DBF8A":cvTier==="partial"?G:"#e07060",marginBottom:2}}>
+                {cvTier==="full"?"Full Report Unlocked — Career Verified":cvTier==="partial"?"Partial — add more for full career analysis":"Career sections limited without CV"}
+              </div>
+              <div style={{fontSize:9,color:FA,lineHeight:1.5}}>
+                {cvTier==="full"
+                  ? `${cvWords} words loaded · All sections including career paths, archetype, and skills analysis will be personalised`
+                  : cvTier==="partial"
+                  ? `${cvWords}/150 words · Career basics will show but detailed paths need more context`
+                  : "Without a CV: numerology, MBTI, Enneagram and psychological sections generate fully. Career sections will show limited generic content."}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Industry-Specific Questions */}
         {industryQs&&(
-          <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,border:"1px solid "+G.replace("#","rgba(").replace(/(..)(..)(..)$/,"$1,$2,$3,0.2)").replace("rgba(","rgba(")}}>
+          <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,border:"1px solid rgba(201,168,76,0.25)"}}>
             <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:10,fontWeight:600}}>
               🎯 {industryQs.label} — Tailored Questions
             </div>
@@ -983,55 +1033,42 @@ export default function App(){
                 <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
                   {q.opts.map(o=>(
                     <button key={o.l} onClick={()=>setIndustryAnswers(a=>({...a,[q.id]:a[q.id]===o.kw?"":o.kw}))}
-                      style={{padding:"5px 12px",borderRadius:6,border:"1px solid "+(industryAnswers[q.id]===o.kw?G:BR),background:industryAnswers[q.id]===o.kw?"rgba(201,168,76,0.12)":T.pageBackground,color:industryAnswers[q.id]===o.kw?G:DM,fontSize:10,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.15s"}}>
+                      style={{padding:"6px 12px",borderRadius:6,border:"1px solid "+(industryAnswers[q.id]===o.kw?G:BR),background:industryAnswers[q.id]===o.kw?"rgba(201,168,76,0.12)":T.pageBackground,color:industryAnswers[q.id]===o.kw?G:DM,fontSize:10,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.15s"}}>
                       {o.l}
                     </button>
                   ))}
                 </div>
               </div>
             ))}
-            {Object.keys(industryAnswers).length>0&&<p style={{fontSize:10,color:G}}>✓ {Object.values(industryAnswers).filter(Boolean).length} answer{Object.values(industryAnswers).filter(Boolean).length!==1?"s":""} selected — report will be more specific</p>}
+            {Object.keys(industryAnswers).length>0&&<p style={{fontSize:10,color:G}}>✓ {Object.values(industryAnswers).filter(Boolean).length} answer{Object.values(industryAnswers).filter(Boolean).length!==1?"s":""} selected</p>}
           </div>
         )}
 
         {/* Privacy note + Consent */}
         <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:16,border:"1px solid "+BR}}>
-          <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
             <span style={{fontSize:14,flexShrink:0}}>🔒</span>
             <p style={{fontSize:10,color:FA,lineHeight:1.6,margin:0}}>
-              <strong style={{color:dark?"#4a9070":"#2a6a50"}}>Your data never leaves this browser.</strong> No servers, no accounts. Your CV is read once in JavaScript and discarded when you close the tab. The report is generated entirely locally.
+              <strong style={{color:dark?"#4a9070":"#2a6a50"}}>Your data never leaves this browser.</strong> No servers, no accounts. CV is read once in JavaScript and discarded when you close the tab.
             </p>
           </div>
-          <div style={{height:"1px",background:BR,marginBottom:12}}/>
+          <div style={{height:"1px",background:BR,marginBottom:10}}/>
           <label style={{display:"flex",gap:10,cursor:"pointer",alignItems:"flex-start"}} onClick={()=>setConsent(c=>!c)}>
-            <div style={{marginTop:2,flexShrink:0,width:16,height:16,borderRadius:4,border:"2px solid "+(consent?G:BR),background:consent?"rgba(201,168,76,0.15)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s"}}>
+            <div style={{marginTop:2,flexShrink:0,width:16,height:16,borderRadius:4,border:"2px solid "+(consent?G:BR),background:consent?"rgba(201,168,76,0.15)":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
               {consent&&<span style={{fontSize:10,color:G,fontWeight:700}}>✓</span>}
             </div>
             <span style={{fontSize:10,color:FA,lineHeight:1.65,userSelect:"none"}}>
-              <strong style={{color:DM}}>Optional — help improve this engine.</strong> Store my anonymised personality patterns locally (MBTI, Enneagram, DISC, OCEAN scores only). Your name, date of birth, and CV are never saved. Data stays on your device. You can clear it anytime below.
-              {consent&&<span style={{display:"block",marginTop:4,color:G,fontSize:9}}> ✓ Patterns will be saved locally when you generate your report.</span>}
+              <strong style={{color:DM}}>Optional:</strong> Store anonymised patterns locally to improve the engine (MBTI, Enneagram, DISC, OCEAN only — never your name or CV).
             </span>
           </label>
-          {consent&&<button onClick={(e)=>{e.stopPropagation();clearStoredData();alert("Stored data cleared.");}} style={{marginTop:8,fontSize:9,color:FA,background:"transparent",border:"none",cursor:"pointer",textDecoration:"underline",padding:0}}>Clear all stored data</button>}
         </div>
 
-        {/* Report Theme Picker */}
-        <div style={{marginBottom:16}}>
-          <label style={{...lbl,marginTop:0}}>Report Theme</label>
-          <div style={{display:"flex",gap:8}}>
-            {[["dark","🌙 Dark","#090E15","#C9A84C"],["light","☀️ Light","#FFFFFF","#9a7030"]].map(([val,label,bg,accent])=>(
-              <button key={val} onClick={()=>setDark(val==="dark")}
-                style={{flex:1,padding:"10px",borderRadius:9,border:`2px solid ${dark===(val==="dark")?G:BR}`,background:bg,color:dark===(val==="dark")?accent:FA,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:12,fontWeight:dark===(val==="dark")?600:400,transition:"all 0.15s",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <p style={{fontSize:9,color:FA,marginTop:5,letterSpacing:0.5}}>Your PDF will also use the selected theme</p>
-        </div>
-
-        <button style={{...btnG,opacity:name?1:0.35}} disabled={!name} onClick={generate}>
-          {firstName?`Generate ${firstName}'s Report →`:"Generate Intelligence Report →"}
+        {/* Generate Button — two states */}
+        <button style={{...btnG,opacity:name?1:0.35,position:"relative"}} disabled={!name} onClick={generate}>
+          <span>{cvTier==="full" ? `Generate ${firstName?firstName+"'s ":""}Full Report →` : cvTier==="partial" ? `Generate Report (Partial Career) →` : `Generate${firstName?" "+firstName+"'s":""} Report →`}</span>
+          {cvTier==="full"&&<span style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",fontSize:9,background:"rgba(0,0,0,0.15)",padding:"2px 7px",borderRadius:10,letterSpacing:1}}>✓ CV</span>}
         </button>
+        {cvTier==="none"&&name&&<p style={{fontSize:10,color:FA,textAlign:"center",marginTop:8,lineHeight:1.5}}>Without a CV, career sections will be limited. <button onClick={()=>fileRef.current.click()} style={{background:"none",border:"none",color:G,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:10,textDecoration:"underline",padding:0}}>Upload now</button> for the full experience.</p>}
       </>}
 
       {mode==="compat"&&<>
@@ -1076,7 +1113,7 @@ export default function App(){
 
   // ── COMPAT RESULT ────────────────────────────────
   if(stage==="compat"&&compat) return(
-    <div style={pg}><ThemeBtn/><div style={crd}>
+    <div style={pg}><ThemeBtn/><Toast/><div style={crd}>
       <div style={{textAlign:"center",marginBottom:24}}>
         <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:14}}>Compatibility Report</div>
         <h2 style={{fontSize:24,color:TX,fontFamily:"'Cormorant Garamond',serif",fontWeight:300,marginBottom:6}}>{c1.report.name} × {c2.report.name}</h2>
@@ -1153,6 +1190,17 @@ export default function App(){
       );
     }
     function RTag({children,c}){return <span style={{background:rInputBg,border:"1px solid rgba(201,168,76,0.4)",color:c||RG,fontSize:9,letterSpacing:1.5,padding:"4px 11px",borderRadius:20,textTransform:"uppercase"}}>{children}</span>;}
+
+    function LockedSection({title,reason,onUnlock}){
+      return(
+        <div style={{background:"rgba(201,100,80,0.04)",borderRadius:10,padding:"20px",textAlign:"center",border:"1px dashed rgba(201,100,80,0.25)",marginBottom:8}}>
+          <div style={{fontSize:20,marginBottom:8}}>🔓</div>
+          <div style={{fontSize:12,color:"#1a1a1a",fontWeight:600,marginBottom:4}}>{title}</div>
+          <p style={{fontSize:11,color:"#888",lineHeight:1.6,marginBottom:12}}>{reason}</p>
+          <button onClick={onUnlock} style={{background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:8,padding:"9px 20px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>+ Add CV to unlock this section</button>
+        </div>
+      );
+    }
     function RCard({label,text,color,copyId}){
       return(
         <div style={{background:rInputBg,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+(color||RG)}}>
@@ -1195,6 +1243,14 @@ export default function App(){
     return(
       <div style={{...rpg,position:"relative"}}>
         <ThemeBtn/>
+        <Toast/>
+
+        {/* Sticky mobile action bar */}
+        <div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(255,255,255,0.96)",backdropFilter:"blur(12px)",borderTop:"1px solid rgba(0,0,0,0.08)",padding:"10px 16px",display:"flex",gap:8,zIndex:200,boxShadow:"0 -4px 20px rgba(0,0,0,0.08)"}}>
+          <button onClick={()=>printToPDF(report,dob)} style={{flex:2,padding:"11px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>⬇ PDF</button>
+          <button onClick={copyShareLink} style={{flex:1,padding:"11px",background:"#F8F6F1",border:`1px solid ${copied?"#C9A84C":"rgba(0,0,0,0.12)"}`,borderRadius:9,fontSize:12,color:copied?"#C9A84C":"#666",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{copied?"✓":"🔗"}</button>
+          <button onClick={reset} style={{flex:1,padding:"11px",background:"#F8F6F1",border:"1px solid rgba(0,0,0,0.12)",borderRadius:9,fontSize:11,color:"#666",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← New</button>
+        </div>
 
         {/* Floating TOC */}
         <div style={{position:"fixed",left:8,top:"50%",transform:"translateY(-50%)",zIndex:50,display:"flex",flexDirection:"column",gap:3,maxHeight:"80vh",overflowY:"auto"}}>
@@ -1209,8 +1265,13 @@ export default function App(){
           <div style={{background:"linear-gradient(160deg,#090E15 0%,#1C2B3A 100%)",borderRadius:"20px 20px 0 0",padding:"clamp(32px,6vw,52px) clamp(16px,5vw,36px) 44px",textAlign:"center",borderBottom:"1px solid rgba(0,0,0,0.08)",marginBottom:28,position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"radial-gradient(ellipse at 40% 50%,rgba(201,168,76,0.06) 0%,transparent 60%)",pointerEvents:"none"}}/>
 
-            <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:14}}>Personal Intelligence Report</div>
+            {/* CV Tier badge in header */}
+            {cvTier==="full"&&<div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(125,191,138,0.15)",border:"1px solid rgba(125,191,138,0.4)",borderRadius:20,padding:"4px 12px",fontSize:9,color:"#7DBF8A",letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>✓ Career Verified</div>}
+            {cvTier==="none"&&<div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(201,100,80,0.1)",border:"1px solid rgba(201,100,80,0.3)",borderRadius:20,padding:"4px 12px",fontSize:9,color:"#e07060",letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>⚠ Limited — No CV</div>}
+            {cvTier==="partial"&&<div style={{display:"inline-flex",alignItems:"center",gap:5,background:"rgba(201,168,76,0.12)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,padding:"4px 12px",fontSize:9,color:"#C9A84C",letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>⚡ Partial CV</div>}
+
             <h1 style={{fontSize:"clamp(22px,5vw,28px)",color:TX,margin:"8px 0 6px",fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300}}>{name}</h1>
+            <p style={{fontSize:10,color:"rgba(201,168,76,0.6)",letterSpacing:2,textTransform:"uppercase",margin:"0 0 6px"}}>Personal Intelligence Report</p>
             <p style={{fontSize:16,color:G,fontStyle:"italic",margin:"0 0 6px",fontFamily:"'Cormorant Garamond',serif"}}>{headline}</p>
             <p style={{fontSize:12,color:DM,fontStyle:"italic",margin:"0 0 18px",lineHeight:1.6,maxWidth:400,marginLeft:"auto",marginRight:"auto"}}>{tagline}</p>
             <div style={{display:"flex",justifyContent:"center",gap:6,flexWrap:"wrap",marginBottom:18}}>
@@ -1398,21 +1459,33 @@ export default function App(){
 
             {/* Career */}
             <RSec id="career" title="Career Intelligence" sub={careerCtx.industry!=="general"?careerCtx.industry:undefined}>
-              <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
+              {cvTier==="none"
+                ? <LockedSection
+                    title="Full Career Analysis Locked"
+                    reason="Career archetype, three paths forward, skills matrix, and blind spot analysis are significantly more personalised with your CV or LinkedIn profile. The section below shows generic content only."
+                    onUnlock={reset}
+                  />
+                : null}
+              <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G,opacity:cvTier==="none"?0.5:1}}>
                 <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Career Archetype</div>
-                <div style={{fontSize:14,color:TX,fontFamily:"'Cormorant Garamond',serif",marginBottom:4}}>{careerCtx.archetype}</div>
-                <p style={{...rbod,fontSize:12,color:FA}}>{careerCtx.archetypeDesc}</p>
+                <div style={{fontSize:14,color:"#1a1a1a",fontFamily:"'Cormorant Garamond',serif",marginBottom:4}}>{careerCtx.archetype}</div>
+                <p style={{...rbod,fontSize:12,color:RFA}}>{careerCtx.archetypeDesc}</p>
+                {cvTier==="none"&&<p style={{fontSize:10,color:"#e07060",marginTop:6,fontStyle:"italic"}}>⚠ Add your CV for a role-specific archetype</p>}
               </div>
-              <div style={{marginBottom:12}}>
-                <p style={{fontSize:9,color:FA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Strengths</p>
-                {strengths.map((s,i)=><div key={i} style={{fontSize:12,color:T.bodColor,lineHeight:1.75,marginBottom:4}}>◆ {s}</div>)}
+              <div style={{marginBottom:12,opacity:cvTier==="none"?0.5:1}}>
+                <p style={{fontSize:9,color:RFA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Strengths</p>
+                {strengths.map((s,i)=><div key={i} style={{fontSize:12,color:"#333",lineHeight:1.75,marginBottom:4}}>◆ {s}</div>)}
               </div>
-              {careerCtx.nextMoves.length>0&&<div style={{marginBottom:12}}>
-                <p style={{fontSize:9,color:FA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Three Paths Forward</p>
+              {careerCtx.nextMoves.length>0&&<div style={{marginBottom:12,opacity:cvTier==="none"?0.4:1}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <p style={{fontSize:9,color:RFA,letterSpacing:2,textTransform:"uppercase",margin:0}}>Three Paths Forward</p>
+                  {cvTier==="none"&&<span style={{fontSize:9,color:"#e07060",background:"rgba(201,100,80,0.08)",padding:"2px 8px",borderRadius:4}}>Generic — add CV to personalise</span>}
+                  {cvTier==="full"&&<span style={{fontSize:9,color:"#7DBF8A",background:"rgba(125,191,138,0.08)",padding:"2px 8px",borderRadius:4}}>✓ CV-personalised</span>}
+                </div>
                 {careerCtx.nextMoves.map((m,i)=>(
                   <div key={i} style={{background:rInputBg,borderRadius:9,padding:"12px 14px",marginBottom:8,borderLeft:"2px solid "+["#7C9CBF","#7DBF8A","#C97A7A"][i]}}>
                     <div style={{fontSize:10,color:["#7C9CBF","#7DBF8A","#C97A7A"][i],fontWeight:600,marginBottom:3}}>0{i+1} — {m.title}</div>
-                    <p style={{...rbod,fontSize:12,color:FA}}>{m.desc}</p>
+                    <p style={{...rbod,fontSize:12,color:RFA}}>{m.desc}</p>
                   </div>
                 ))}
               </div>}
@@ -1421,6 +1494,7 @@ export default function App(){
 
             {/* Roadmap */}
             <RSec id="roadmap" title="Strategic Roadmap">
+              {cvTier==="none"&&<div style={{background:"rgba(201,100,80,0.04)",borderRadius:8,padding:"10px 12px",marginBottom:12,border:"1px dashed rgba(201,100,80,0.2)",fontSize:10,color:"#e07060"}}>⚠ Roadmap shows generic timelines. Upload your CV for milestones tied to your specific career level and industry.</div>}
               {roadmap.map((r,i)=>(
                 <div key={i} style={{marginBottom:16,paddingLeft:14,borderLeft:"2px solid "+G,position:"relative"}}>
                   <div style={{position:"absolute",left:-5,top:5,width:8,height:8,borderRadius:"50%",background:G}}/>

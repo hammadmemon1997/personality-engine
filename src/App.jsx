@@ -998,7 +998,7 @@ export default function App(){
 
   // ── REPORT ───────────────────────────────────────
   if(stage==="report"&&report){
-    const{headline,tagline,summary,ocean,oceanText,mbti,mbtiData,ennType,ennType2,ennRawScores,ennData,discLabel,strengths,blind,wealthPsych,roadmap,growth,quote,commStyle,numSynthesis,nums,lpData,elemData,careerCtx,soulPurpose,relData,roleModels,dailyProtocol,decisionTiming,lifeJourney}=report;
+    const{headline,tagline,summary,ocean,oceanText,mbti,mbtiData,ennType,ennType2,ennRawScores,ennData,discLabel,discDom,strengths,blind,wealthPsych,roadmap,growth,quote,commStyle,numSynthesis,nums,lpData,elemData,careerCtx,soulPurpose,relData,roleModels,dailyProtocol,decisionTiming,lifeJourney}=report;
     const headerBg=dark?"linear-gradient(160deg,#090E15 0%,#131F2D 100%)":"linear-gradient(160deg,#F0EDE6 0%,#E8E4DA 100%)";
 
     // TOC sections

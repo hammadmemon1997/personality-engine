@@ -529,61 +529,27 @@ function clearStoredData() {
 const BC={O:"#7C9CBF",C:"#C9A84C",E:"#7DBF8A",A:"#C97A7A",N:"#B07DBF"};
 const BL={O:"Openness",C:"Conscientiousness",E:"Extraversion",A:"Agreeableness",N:"Neuroticism"};
 
-// ═══════════════════════════════════════════════════
-// APP
-// ═══════════════════════════════════════════════════
+
 // ═══════════════════════════════════════════════════
 // APP
 // ═══════════════════════════════════════════════════
 export default function App(){
+  // ── 1. THEME ────────────────────────────────────
   const[dark,setDark]=useState(true);
   const T=dark?DARK_THEME:LIGHT_THEME;
   const{G,DK,D2,D3,BR,TX,DM,FA}=T;
 
-  const pg={minHeight:"100vh",background:T.pageBackground,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 16px",fontFamily:"'DM Sans',system-ui,sans-serif"};
-  const crd={background:T.cardBackground,border:"1px solid "+BR,borderRadius:20,padding:"40px 32px",width:"100%",maxWidth:560,boxShadow:T.shadow};
-  const wid={background:T.cardBackground,border:"1px solid "+BR,borderRadius:20,padding:"0 0 40px",width:"100%",maxWidth:720,boxShadow:T.shadow};
-  const lbl={display:"block",fontSize:9,color:G,letterSpacing:3,textTransform:"uppercase",marginBottom:6,marginTop:18};
-  const inp={width:"100%",padding:"12px 14px",background:T.inputBackground,border:"1px solid "+BR,borderRadius:9,color:TX,fontSize:13,fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box",outline:"none"};
-  const btnG={width:"100%",padding:"15px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"};
-  const btnL={width:"100%",padding:"13px",background:"transparent",color:G,border:"1px solid "+G,borderRadius:10,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:20};
-  const bod={color:T.bodColor,fontSize:13,lineHeight:1.9};
-  const hl={background:"rgba(201,168,76,0.07)",borderLeft:"3px solid #C9A84C",borderRadius:"0 8px 8px 0",padding:"12px 16px",marginTop:12};
-
-  function Sec({id,title,sub,children,copyText}){
-    const isCollapsed=collapsed[id||title];
-    return(
-      <div id={`sec-${id||title}`} style={{marginBottom:24,borderBottom:"1px solid "+BR,paddingBottom:isCollapsed?0:22}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:isCollapsed?12:12,cursor:"pointer"}} onClick={()=>id&&toggleSection(id||title)}>
-          <span style={{fontSize:9,letterSpacing:3,color:G,textTransform:"uppercase",flex:1}}>{title}{sub&&<span style={{color:FA,letterSpacing:0,textTransform:"none",fontSize:10,fontWeight:400}}> — {sub}</span>}</span>
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            {copyText&&<button onClick={e=>{e.stopPropagation();copyInsight(id,copyText);}} style={{background:"transparent",border:"1px solid "+BR,borderRadius:4,padding:"2px 7px",fontSize:9,color:copiedId===id?G:FA,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{copiedId===id?"✓ Copied":"Copy"}</button>}
-            {id&&<span style={{fontSize:10,color:FA,transition:"transform 0.2s",display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)"}}>▾</span>}
-          </div>
-        </div>
-        {!isCollapsed&&children}
-      </div>
-    );
-  }
-  function Tag({children,c}){return <span style={{background:T.inputBackground,border:"1px solid rgba(201,168,76,0.4)",color:c||G,fontSize:9,letterSpacing:1.5,padding:"4px 11px",borderRadius:20,textTransform:"uppercase"}}>{children}</span>;}
-  function InfoCard({label,text,color,copyId}){
-    return(
-      <div style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+(color||G),position:"relative"}}>
-        <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:4}}>
-          <div style={{fontSize:9,color:color||G,letterSpacing:1.5,textTransform:"uppercase"}}>{label}</div>
-          {copyId&&text&&<button onClick={()=>copyInsight(copyId,text)} style={{background:"transparent",border:"none",fontSize:9,color:copiedId===copyId?G:FA,cursor:"pointer",padding:0,fontFamily:"'DM Sans',sans-serif"}}>{copiedId===copyId?"✓":"⎘"}</button>}
-        </div>
-        <p style={{...bod,fontSize:12,color:DM}}>{text}</p>
-      </div>
-    );
-  }
-
-
+  // ── 2. ALL STATE (hooks must come first) ─────────
   const[mode,setMode]=useState("main");
   const[stage,setStage]=useState("form");
-  const[name,setName]=useState(""),  [dob,setDob]=useState(""),  [role,setRole]=useState(""),  [bg,setBg]=useState("");
-  const[file,setFile]=useState(null),[rText,setRText]=useState("");
+  const[name,setName]=useState("");
+  const[dob,setDob]=useState("");
+  const[role,setRole]=useState("");
+  const[bg,setBg]=useState("");
+  const[file,setFile]=useState(null);
+  const[rText,setRText]=useState("");
   const[report,setReport]=useState(null);
+  const[error,setError]=useState(null);
   const[consent,setConsent]=useState(false);
   const[industryAnswers,setIndustryAnswers]=useState({});
   const[linkedinUrl,setLinkedinUrl]=useState("");
@@ -601,14 +567,26 @@ export default function App(){
   const[c2,setC2]=useState({name:"",dob:"",role:"",bg:"",file:null,rText:"",report:null});
   const[compat,setCompat]=useState(null);
   const fileRef=useRef(),cf1=useRef(),cf2=useRef();
-  let liveNums=null;if(name&&dob){try{liveNums=calcNums(name,dob);}catch{liveNums=null;}}
+
+  // ── 3. DERIVED VALUES ────────────────────────────
+  let liveNums=null;
+  if(name&&dob){try{liveNums=calcNums(name,dob);}catch{liveNums=null;}}
   const firstName=name?name.trim().split(" ")[0]:"";
   const detectedIndustry=detectIndustryQs(role,bg);
   const industryQs=detectedIndustry?INDUSTRY_QUESTIONS[detectedIndustry]:null;
-
-  // Form progress (0-4)
   const formProgress=Math.min(4,[name,dob,role||bg,file||rText].filter(Boolean).length);
 
+  // ── 4. STYLES (use T which is defined above) ─────
+  const pg={minHeight:"100vh",background:T.pageBackground,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 16px",fontFamily:"'DM Sans',system-ui,sans-serif"};
+  const crd={background:T.cardBackground,border:"1px solid "+BR,borderRadius:20,padding:"40px 32px",width:"100%",maxWidth:560,boxShadow:T.shadow};
+  const wid={background:T.cardBackground,border:"1px solid "+BR,borderRadius:20,padding:"0 0 40px",width:"100%",maxWidth:720,boxShadow:T.shadow};
+  const lbl={display:"block",fontSize:9,color:G,letterSpacing:3,textTransform:"uppercase",marginBottom:6,marginTop:18};
+  const inp={width:"100%",padding:"12px 14px",background:T.inputBackground,border:"1px solid "+BR,borderRadius:9,color:TX,fontSize:13,fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box",outline:"none"};
+  const btnG={width:"100%",padding:"15px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"};
+  const bod={color:T.bodColor,fontSize:13,lineHeight:1.9};
+  const hl={background:"rgba(201,168,76,0.07)",borderLeft:"3px solid #C9A84C",borderRadius:"0 8px 8px 0",padding:"12px 16px",marginTop:12};
+
+  // ── 5. HELPER FUNCTIONS (can reference state) ────
   function buildExtraContext(){
     const parts=[];
     Object.values(industryAnswers).forEach(kw=>{if(kw)parts.push(kw);});
@@ -617,28 +595,69 @@ export default function App(){
     return parts.join(" ");
   }
 
+  function toggleSection(key){setCollapsed(c=>({...c,[key]:!c[key]}));}
+
+  function copyInsight(id,text){
+    if(!text)return;
+    navigator.clipboard.writeText(text).then(()=>{
+      setCopiedId(id);setTimeout(()=>setCopiedId(null),1800);
+    }).catch(()=>{});
+  }
+
+  function copyShareLink(){
+    const shareData={n:name,d:dob,r:role,b:bg,li:linkedinUrl||"",autoGen:true};
+    const hash=encodeShare(shareData);
+    if(!hash)return;
+    const url=window.location.origin+window.location.pathname+"#"+hash;
+    navigator.clipboard.writeText(url)
+      .then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2500);})
+      .catch(()=>{try{prompt("Copy this link:",url);}catch{}});
+  }
+
+  function reset(){
+    setStage("form");setName("");setDob("");setRole("");setBg("");
+    setFile(null);setRText("");setReport(null);setError(null);
+    setConsent(false);setIndustryAnswers({});setLinkedinUrl("");
+    setLinkedinPaste("");setShowLinkedin(false);setCopied(false);
+    setCopiedId(null);setLoading(false);setLoadStep(0);
+    setCollapsed({});setRating(0);setRatingDone(false);setActiveSection(0);
+    try{window.history.replaceState(null,null,window.location.pathname);}catch{}
+  }
+
+  function runCompat(){
+    if(!c1.name||!c2.name)return;
+    try{
+      const n1=(c1.name&&c1.dob)?calcNums(c1.name,c1.dob):null;
+      const n2=(c2.name&&c2.dob)?calcNums(c2.name,c2.dob):null;
+      const r1=buildReport(c1.name,c1.role,c1.bg,c1.rText,n1);
+      const r2=buildReport(c2.name,c2.role,c2.bg,c2.rText,n2);
+      setC1(p=>({...p,report:r1}));setC2(p=>({...p,report:r2}));
+      setCompat(analyseCompatibility(r1,r2));setStage("compat");
+    }catch(e){console.error(e);}
+  }
+
+  // ── 6. URL HASH (useEffect after all state) ──────
   useEffect(()=>{
     const hash=window.location.hash.slice(1);
     if(!hash)return;
     const data=decodeShare(hash);
-    if(!data)return;
-    if(data.n)setName(data.n);
-    if(data.d)setDob(data.d);
-    if(data.r)setRole(data.r);
-    if(data.b)setBg(data.b);
-    if(data.li)setLinkedinUrl(data.li);
-    if(data.autoGen&&data.n){
-      const nums=(data.n&&data.d)?calcNums(data.n,data.d):null;
-      setReport(buildReport(data.n,data.r||"",data.b||"","",nums));
-      setStage("report");
+    if(!data||!data.n)return;
+    setName(data.n||"");setDob(data.d||"");setRole(data.r||"");setBg(data.b||"");setLinkedinUrl(data.li||"");
+    if(data.autoGen){
+      try{
+        const nums=(data.n&&data.d)?calcNums(data.n,data.d):null;
+        const r=buildReport(data.n,data.r||"",data.b||"","",nums);
+        setReport(r);setStage("report");
+      }catch(e){console.error("Auto-gen error:",e);}
     }
   },[]);
 
-  // Loading animation sequence
+  // ── 7. GENERATE (with robust error handling) ─────
   const LOAD_STEPS=["Parsing your profile...","Scoring OCEAN dimensions...","Deriving MBTI from Big Five...","Matching Enneagram patterns...","Calculating numerology...","Building career insights...","Your report is ready ✓"];
+
   function generate(){
     if(!name)return;
-    setLoading(true);setLoadStep(0);
+    setLoading(true);setLoadStep(0);setError(null);
     let step=0;
     const timer=setInterval(()=>{
       step++;
@@ -648,62 +667,68 @@ export default function App(){
         try{
           const nums=(name&&dob)?calcNums(name,dob):null;
           const extra=buildExtraContext();
-          const r=buildReport(name,role,bg,(rText||"")+" "+(extra||""),nums);
+          const r=buildReport(name,role||"",bg||"",(rText||"")+" "+(extra||""),nums);
+          if(!r)throw new Error("buildReport returned null");
           setReport(r);
-          if(consent){try{saveAnonymousReport(r);}catch{}}
-          const shareData={n:name,d:dob,r:role,b:bg,li:linkedinUrl||""};
-          const hash=encodeShare(shareData);
-          if(hash){try{window.history.replaceState(null,null,"#"+hash);}catch{}}
-          setTimeout(()=>{setLoading(false);setStage("report");},600);
-        }catch(err){
-          console.error("Report generation error:",err);
-          // Fallback: try again with minimal input
           try{
-            const r=buildReport(name,"","","",null);
-            setReport(r);
-            setTimeout(()=>{setLoading(false);setStage("report");},300);
-          }catch(err2){
-            console.error("Fallback also failed:",err2);
-            setLoading(false);
-            alert("Something went wrong generating your report. Please try again.");
-          }
+            if(consent)saveAnonymousReport(r);
+            const hash=encodeShare({n:name,d:dob,r:role,b:bg,li:linkedinUrl||""});
+            if(hash)window.history.replaceState(null,null,"#"+hash);
+          }catch{}
+          setTimeout(()=>{setLoading(false);setStage("report");},500);
+        }catch(err){
+          console.error("Generation error:",err);
+          setLoading(false);
+          setError("Something went wrong: "+err.message+". Try adding more context about your role.");
+          setStage("form");
         }
       }
     },380);
   }
 
-  function copyShareLink(){
-    const shareData={n:name,d:dob,r:role,b:bg,li:linkedinUrl||"",autoGen:true};
-    const hash=encodeShare(shareData);
-    if(!hash)return;
-    const url=window.location.origin+window.location.pathname+"#"+hash;
-    navigator.clipboard.writeText(url).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2500);}).catch(()=>{prompt("Copy this link:",url);});
+  // ── 8. INNER COMPONENTS (after all state/functions) ──
+  // These are defined here so they can access state via closure safely
+  function Sec({id,title,sub,children,copyText}){
+    const isCollapsed=!!collapsed[id||title];
+    return(
+      <div id={id?`sec-${id}`:undefined} style={{marginBottom:24,borderBottom:"1px solid "+BR,paddingBottom:isCollapsed?0:22}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}} onClick={()=>id&&toggleSection(id)}>
+          <span style={{fontSize:9,letterSpacing:3,color:G,textTransform:"uppercase",flex:1}}>
+            {title}{sub&&<span style={{color:FA,letterSpacing:0,textTransform:"none",fontSize:10,fontWeight:400}}> — {sub}</span>}
+          </span>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            {copyText&&<button onClick={e=>{e.stopPropagation();copyInsight(id||title,copyText);}} style={{background:"transparent",border:"1px solid "+BR,borderRadius:4,padding:"2px 7px",fontSize:9,color:copiedId===(id||title)?G:FA,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
+              {copiedId===(id||title)?"✓ Copied":"Copy"}
+            </button>}
+            {id&&<span style={{fontSize:10,color:FA,display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▾</span>}
+          </div>
+        </div>
+        {!isCollapsed&&children}
+      </div>
+    );
   }
 
-  function copyInsight(id,text){
-    navigator.clipboard.writeText(text).then(()=>{setCopiedId(id);setTimeout(()=>setCopiedId(null),1800);}).catch(()=>{});
+  function Tag({children,c}){
+    return <span style={{background:T.inputBackground,border:"1px solid rgba(201,168,76,0.4)",color:c||G,fontSize:9,letterSpacing:1.5,padding:"4px 11px",borderRadius:20,textTransform:"uppercase"}}>{children}</span>;
   }
 
-  function toggleSection(key){setCollapsed(c=>({...c,[key]:!c[key]}));}
-
-  function runCompat(){
-    if(!c1.name||!c2.name)return;
-    const n1=(c1.name&&c1.dob)?calcNums(c1.name,c1.dob):null;
-    const n2=(c2.name&&c2.dob)?calcNums(c2.name,c2.dob):null;
-    const r1=buildReport(c1.name,c1.role,c1.bg,c1.rText,n1);
-    const r2=buildReport(c2.name,c2.role,c2.bg,c2.rText,n2);
-    setC1(p=>({...p,report:r1}));setC2(p=>({...p,report:r2}));
-    setCompat(analyseCompatibility(r1,r2));setStage("compat");
-  }
-  function reset(){
-    setStage("form");setName("");setDob("");setRole("");setBg("");setFile(null);setRText("");setReport(null);setConsent(false);setIndustryAnswers({});setLinkedinUrl("");setLinkedinPaste("");setShowLinkedin(false);setCopied(false);setCopiedId(null);setLoading(false);setLoadStep(0);setCollapsed({});setRating(0);setRatingDone(false);setActiveSection(0);
-    window.history.replaceState(null,null,window.location.pathname);
+  function InfoCard({label,text,color,copyId}){
+    const isCopied=copiedId===copyId;
+    return(
+      <div style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+(color||G)}}>
+        <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:4}}>
+          <div style={{fontSize:9,color:color||G,letterSpacing:1.5,textTransform:"uppercase"}}>{label}</div>
+          {copyId&&text&&<button onClick={()=>copyInsight(copyId,text)} style={{background:"transparent",border:"none",fontSize:9,color:isCopied?G:FA,cursor:"pointer",padding:0,fontFamily:"'DM Sans',sans-serif"}}>{isCopied?"✓":"⎘"}</button>}
+        </div>
+        <p style={{...bod,fontSize:12,color:DM,margin:0}}>{text}</p>
+      </div>
+    );
   }
 
-
+  // ── 9. UI HELPERS ─────────────────────────────────
   const ThemeBtn=()=>(
-    <button onClick={()=>setDark(d=>!d)} title={dark?"Switch to Light Mode":"Switch to Dark Mode"}
-      style={{position:"fixed",top:16,right:16,background:T.cardBackground,border:"1px solid "+BR,borderRadius:40,width:40,height:40,cursor:"pointer",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,boxShadow:T.shadow,transition:"all 0.2s"}}>
+    <button onClick={()=>setDark(d=>!d)} title={dark?"Light Mode":"Dark Mode"}
+      style={{position:"fixed",top:16,right:16,background:T.cardBackground,border:"1px solid "+BR,borderRadius:40,width:40,height:40,cursor:"pointer",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,boxShadow:T.shadow}}>
       {dark?"☀️":"🌙"}
     </button>
   );
@@ -711,35 +736,36 @@ export default function App(){
   const Nav=()=>(
     <div style={{display:"flex",gap:4,marginBottom:24,background:T.inputBackground,borderRadius:10,padding:4}}>
       {[["main","Individual Report"],["compat","Compatibility"]].map(([m,l])=>(
-        <button key={m} onClick={()=>{setMode(m);setStage("form");}} style={{flex:1,padding:"9px",background:mode===m?"linear-gradient(135deg,#C9A84C,#9a7030)":T.navInactive,border:"none",borderRadius:8,color:mode===m?"#090E15":DM,fontSize:12,fontWeight:mode===m?600:400,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{l}</button>
+        <button key={m} onClick={()=>{setMode(m);setStage("form");setError(null);}} style={{flex:1,padding:"9px",background:mode===m?"linear-gradient(135deg,#C9A84C,#9a7030)":T.navInactive,border:"none",borderRadius:8,color:mode===m?"#090E15":DM,fontSize:12,fontWeight:mode===m?600:400,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{l}</button>
       ))}
     </div>
   );
 
-  // ── LOADING SCREEN ────────────────────────────────
+  // ── 10. LOADING SCREEN ────────────────────────────
   if(loading) return(
-    <div style={{...pg,alignItems:"center"}}>
+    <div style={{...pg,alignItems:"center"}}><ThemeBtn/>
       <div style={{...crd,textAlign:"center",padding:"52px 32px"}}>
         <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:28}}>Generating Report</div>
-        {/* Animated ring */}
         <div style={{position:"relative",width:80,height:80,margin:"0 auto 28px"}}>
           <svg width="80" height="80" viewBox="0 0 80 80">
             <circle cx="40" cy="40" r="34" fill="none" stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="5"/>
-            <circle cx="40" cy="40" r="34" fill="none" stroke={G} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(loadStep/Math.max(LOAD_STEPS.length-1,1))*213} 213`} transform="rotate(-90 40 40)" style={{transition:"stroke-dasharray 0.4s ease"}}/>
+            <circle cx="40" cy="40" r="34" fill="none" stroke={G} strokeWidth="5" strokeLinecap="round"
+              strokeDasharray={`${(loadStep/Math.max(LOAD_STEPS.length-1,1))*213} 213`}
+              transform="rotate(-90 40 40)" style={{transition:"stroke-dasharray 0.38s ease"}}/>
           </svg>
           <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:G,fontFamily:"'DM Sans',sans-serif"}}>
             {Math.round((loadStep/Math.max(LOAD_STEPS.length-1,1))*100)}%
           </div>
         </div>
-        {/* Steps */}
         <div style={{maxWidth:280,margin:"0 auto"}}>
           {LOAD_STEPS.map((s,i)=>(
             <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,opacity:i<=loadStep?1:0.25,transition:"opacity 0.3s"}}>
-              <div style={{width:16,height:16,borderRadius:"50%",background:i<loadStep?G:i===loadStep?"rgba(201,168,76,0.3)":dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.05)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",transition:"background 0.3s"}}>
+              <div style={{width:16,height:16,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",
+                background:i<loadStep?G:i===loadStep?"rgba(201,168,76,0.25)":dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.05)"}}>
                 {i<loadStep&&<span style={{fontSize:8,color:"#090E15",fontWeight:700}}>✓</span>}
                 {i===loadStep&&<div style={{width:6,height:6,borderRadius:"50%",background:G}}/>}
               </div>
-              <span style={{fontSize:11,color:i===loadStep?TX:FA,textAlign:"left",transition:"color 0.3s"}}>{s}</span>
+              <span style={{fontSize:11,color:i===loadStep?TX:FA,textAlign:"left"}}>{s}</span>
             </div>
           ))}
         </div>
@@ -747,7 +773,6 @@ export default function App(){
     </div>
   );
 
-  // ── FORM ─────────────────────────────────────────
   if(stage==="form") return(
     <div style={pg}><ThemeBtn/><div style={crd}>
       <div style={{textAlign:"center",marginBottom:20}}>
@@ -755,6 +780,7 @@ export default function App(){
         <h1 style={{fontSize:38,color:TX,lineHeight:1.1,fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300}}>Know Your<br/><em style={{color:G}}>True Self</em></h1>
         <p style={{fontSize:13,color:DM,lineHeight:1.7,marginTop:10}}>Big Five · MBTI · Enneagram · DISC · Numerology · Soul Purpose</p>
       </div>
+      {error&&<div style={{background:"rgba(201,100,80,0.1)",border:"1px solid rgba(201,100,80,0.4)",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:11,color:"#e07060",lineHeight:1.5}}>⚠ {error}</div>}
 
       {/* Progress Steps */}
       {mode==="main"&&<div style={{marginBottom:24}}>

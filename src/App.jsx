@@ -943,7 +943,7 @@ export default function App(){
       <Nav/>
       {mode==="main"&&<>
         <label style={lbl}>Your Full Name *</label>
-        <input style={inp} placeholder="e.g. Muhammad Hammad" value={name} onChange={e=>setName(e.target.value)} autoFocus/>
+        <input style={inp} placeholder="e.g. Hammad" value={name} onChange={e=>setName(e.target.value)} autoFocus/>
 
         <label style={{...lbl,marginTop:18}}>
           {firstName?`${firstName}, when were you born?`:"Date of Birth"}
@@ -959,13 +959,13 @@ export default function App(){
         </div>}
 
         <label style={{...lbl,marginTop:18}}>Your Current Role</label>
-        <input style={inp} placeholder="e.g. Assistant Manager, EY Melbourne" value={role} onChange={e=>setRole(e.target.value)}/>
+        <input style={inp} placeholder="e.g. Senior Consultant, Finance Manager, Product Lead..." value={role} onChange={e=>setRole(e.target.value)}/>
 
         <label style={{...lbl,marginTop:18}}>
           Brief Background Context
           <span style={{color:FA,fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:9}}> — optional</span>
         </label>
-        <textarea style={{...inp,height:58,resize:"none"}} placeholder="6 years Big 4 audit, EY and PwC, IFRS specialist, building a side business..." value={bg} onChange={e=>setBg(e.target.value)}/>
+        <textarea style={{...inp,height:58,resize:"none"}} placeholder="e.g. 8 years in financial services, CPA qualified, leading a team of 5, transitioning into leadership..." value={bg} onChange={e=>setBg(e.target.value)}/>
 
         <label style={{...lbl,marginTop:18}}>
           Resume / CV

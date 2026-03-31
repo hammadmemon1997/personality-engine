@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import "./index.css";
 
 // ═══════════════════════════════════════════════════
@@ -15,8 +15,156 @@ const ENN_KW = {"1":["quality","standard","compliance","correct","improve","erro
 const DISC_KW = {D:["director","executive","vp","head","chief","ceo","coo","cfo","lead","senior","manager","principal","partner","founder","president","drive","deliver","target","revenue","competitive","growth","strategy","commercial","authority","decision","transform"],I:["sales","marketing","business development","brand","client","customer","present","pitch","network","engage","communicate","partner","public","event","social","media","creative","collaborate","inspire","train","coach","facilitate"],S:["support","assist","coordinate","admin","operations","hr","team","service","maintain","process","consistent","reliable","stable","steady","patient","care","help","long-term","loyalty","continuity"],C:["audit","analysis","data","research","compliance","quality","accounting","finance","tax","engineer","technical","model","report","review","accuracy","detail","standard","procedure","system","measure","monitor","control","verify","reconcil"]};
 
 // ═══════════════════════════════════════════════════
-// FRAMEWORK LOOKUP TABLES
+// INDUSTRY-SPECIFIC QUESTIONS
 // ═══════════════════════════════════════════════════
+const INDUSTRY_QUESTIONS = {
+  "audit": {
+    label:"Audit & Assurance",
+    qs:[
+      {id:"sector",q:"Primary sector you audit?",opts:[{l:"Banking & Capital Markets",kw:"banking capital markets investment financial instruments credit risk ecl"},{l:"Insurance & Asset Management",kw:"insurance actuarial asset management fund investment risk"},{l:"Corporate & General",kw:"corporate manufacturing retail general industry"},{l:"Public Sector / NFP",kw:"government nonprofit public sector regulatory compliance social"}]},
+      {id:"scale",q:"Typical client size?",opts:[{l:"ASX/Listed entities",kw:"listed asx public reporting disclosure continuous disclosure materiality"},{l:"Large private / MNC",kw:"multinational large private complex cross-border consolidation"},{l:"Mid-market",kw:"mid-market private growing business owner-managed"},{l:"Small business / SME",kw:"small business sme owner advisory practical"}]},
+      {id:"focus",q:"Specialist focus area?",opts:[{l:"Digital Audit & Analytics",kw:"data analytics alteryx halo digital audit automation ai machine learning continuous monitoring"},{l:"IFRS Technical",kw:"ifrs 9 ifrs 16 ifrs 15 technical accounting complex judgement ecl impairment"},{l:"Risk & Internal Controls",kw:"internal controls risk framework sox icfr governance process improvement"},{l:"ESG & Sustainability",kw:"esg sustainability climate risk reporting greenwashing assurance"}]}
+    ]
+  },
+  "tech": {
+    label:"Technology",
+    qs:[
+      {id:"stack",q:"Your primary stack?",opts:[{l:"Frontend / Product",kw:"react ui ux frontend product design user experience interface"},{l:"Backend / Infrastructure",kw:"backend api database infrastructure cloud aws devops systems architecture"},{l:"Data / ML / AI",kw:"data science machine learning artificial intelligence model training analytics python"},{l:"Full-stack",kw:"full stack end to end product build deploy scale"}]},
+      {id:"env",q:"Environment?",opts:[{l:"Startup / Early-stage",kw:"startup early stage founder zero to one build fast iterate pivot"},{l:"Scale-up / Growth",kw:"scale growth series b product market fit team building rapid expansion"},{l:"Enterprise / Big Tech",kw:"enterprise large scale distributed systems reliability governance process"},{l:"Consulting / Agency",kw:"consulting client delivery multiple projects diverse technology advisory"}]},
+      {id:"role_type",q:"Role type?",opts:[{l:"Individual Contributor",kw:"individual contributor deep technical expert specialist craft quality"},{l:"Tech Lead / Manager",kw:"technical lead manager team engineering leadership mentoring architecture decisions"},{l:"Product / Strategy",kw:"product strategy roadmap stakeholder prioritisation outcome metrics"}]}
+    ]
+  },
+  "finance": {
+    label:"Financial Services",
+    qs:[
+      {id:"domain",q:"Your domain?",opts:[{l:"Banking & Lending",kw:"banking lending credit risk retail commercial corporate treasury"},{l:"Investment & Markets",kw:"investment portfolio trading markets equity fixed income derivatives funds"},{l:"Insurance",kw:"insurance underwriting claims actuarial risk product pricing"},{l:"FinTech / Payments",kw:"fintech payments digital banking embedded finance api technology regulation"}]},
+      {id:"function",q:"Primary function?",opts:[{l:"Risk & Compliance",kw:"risk compliance regulatory apra asic governance oversight framework"},{l:"Finance & Reporting",kw:"financial reporting ifrs accounting close consolidation management accounts"},{l:"Advisory & Strategy",kw:"advisory strategy transformation consulting stakeholder executive"},{l:"Operations / Delivery",kw:"operations delivery process improvement efficiency client service"}]}
+    ]
+  },
+  "consulting": {
+    label:"Consulting & Advisory",
+    qs:[
+      {id:"type",q:"Consulting type?",opts:[{l:"Strategy",kw:"strategy growth transformation corporate advisory c-suite board"},{l:"Operations",kw:"operations process improvement lean six sigma efficiency delivery"},{l:"Technology / Digital",kw:"digital transformation technology implementation change management erp cloud"},{l:"Specialist / Boutique",kw:"specialist niche domain expert boutique independent advisory"}]},
+      {id:"clients",q:"Client base?",opts:[{l:"Corporate / Enterprise",kw:"corporate large enterprise asx listed complex stakeholder"},{l:"Government / Public",kw:"government public sector policy regulatory tender procurement"},{l:"SME / Mid-market",kw:"sme mid market private owner managed practical implementation"},{l:"Startup / Scale-up",kw:"startup venture growth scale advisory board mentor"}]}
+    ]
+  },
+  "health": {
+    label:"Healthcare & Life Sciences",
+    qs:[
+      {id:"domain",q:"Your area?",opts:[{l:"Clinical / Patient Care",kw:"clinical patient care treatment outcomes health wellbeing therapeutic"},{l:"Health Administration",kw:"health administration hospital management operations system policy"},{l:"Pharmaceutical / Research",kw:"pharmaceutical clinical trials research regulatory tga fda drug development"},{l:"Allied Health",kw:"allied health physio psychology occupational therapy community care"}]}
+    ]
+  },
+  "marketing": {
+    label:"Marketing & Communications",
+    qs:[
+      {id:"channel",q:"Primary channel focus?",opts:[{l:"Digital / Performance",kw:"digital performance seo sem paid social analytics conversion roi"},{l:"Brand & Creative",kw:"brand creative storytelling design visual identity campaign"},{l:"Content & PR",kw:"content editorial pr communications media relations thought leadership"},{l:"Strategy & Insights",kw:"strategy insights data research market audience segmentation"}]},
+      {id:"sector_focus",q:"B2B or B2C?",opts:[{l:"B2B",kw:"b2b business enterprise account based sales enablement demand generation"},{l:"B2C",kw:"b2c consumer retail mass market loyalty engagement"},{l:"Both",kw:"cross market multi channel integrated campaign broad"}]}
+    ]
+  },
+  "legal": {
+    label:"Legal & Compliance",
+    qs:[
+      {id:"practice",q:"Practice area?",opts:[{l:"Corporate & Commercial",kw:"corporate commercial M&A transactions due diligence contracts negotiation"},{l:"Litigation & Disputes",kw:"litigation dispute resolution advocacy court proceedings mediation"},{l:"Regulatory & Compliance",kw:"regulatory compliance financial services apra asic policy governance risk"},{l:"In-house Counsel",kw:"in-house general counsel corporate governance board risk commercial"}]}
+    ]
+  }
+};
+
+function detectIndustryQs(roleText, bgText) {
+  const t = (roleText + " " + bgText).toLowerCase();
+  if (/audit|assurance|pwc|ey\b|kpmg|deloitte|big 4|big four/.test(t)) return "audit";
+  if (/software|engineer|developer|frontend|backend|devops|fullstack|full.stack|tech lead|cto|vp eng/.test(t)) return "tech";
+  if (/bank|invest|capital market|insurance|asset manag|fund|fintech|trading|portfolio|wealth/.test(t)) return "finance";
+  if (/consult|advisor|advisory|mckinsey|bain|bcg|accenture|strategy&/.test(t)) return "consulting";
+  if (/health|clinical|hospital|medical|pharma|allied|nursing|gp|doctor/.test(t)) return "health";
+  if (/market|brand|content|pr |communications|campaign|seo|digital market/.test(t)) return "marketing";
+  if (/legal|law|litigation|solicitor|barrister|counsel|compliance officer/.test(t)) return "legal";
+  return null;
+}
+
+// ═══════════════════════════════════════════════════
+// SHARE LINK UTILITIES
+// ═══════════════════════════════════════════════════
+function encodeShare(data) {
+  try { return btoa(encodeURIComponent(JSON.stringify(data))); } catch { return null; }
+}
+function decodeShare(hash) {
+  try { return JSON.parse(decodeURIComponent(atob(hash))); } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════
+// PDF PRINT UTILITY
+// ═══════════════════════════════════════════════════
+function printToPDF(report, dob) {
+  const{name,headline,tagline,ocean,mbti,mbtiData,ennType,ennData,discLabel,discDom,strengths,blind,wealthPsych,roadmap,growth,quote,commStyle,numSynthesis,nums,lpData,elemData,careerCtx,soulPurpose,relData,roleModels,dailyProtocol,decisionTiming,lifeJourney}=report;
+  const BC={O:"#7C9CBF",C:"#C9A84C",E:"#7DBF8A",A:"#C97A7A",N:"#B07DBF"};
+  const BL={O:"Openness",C:"Conscientiousness",E:"Extraversion",A:"Agreeableness",N:"Neuroticism"};
+  const bars=Object.entries(ocean).map(([k,v])=>`<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:10px;color:#888;letter-spacing:1.5px;text-transform:uppercase;font-family:DM Sans,sans-serif">${BL[k]}</span><span style="font-size:12px;color:${BC[k]};font-weight:600">${v}%</span></div><div style="height:4px;background:#f0ece4;border-radius:2px"><div style="height:100%;width:${v}%;background:${BC[k]};border-radius:2px"></div></div></div>`).join("");
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Personal Intelligence Report — ${name}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"DM Sans",sans-serif;background:#FAFAF8;color:#1a1a1a;font-size:12px;line-height:1.7;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:A4;margin:15mm 18mm}
+.cover{background:#090E15;color:#F0EAD6;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:80px 60px;page-break-after:always;position:relative}
+.eyebrow{font-size:9px;letter-spacing:5px;color:#C9A84C;text-transform:uppercase;margin-bottom:32px}
+.cname{font-family:"Cormorant Garamond",serif;font-size:52px;font-weight:300;margin-bottom:14px}
+.arch{font-family:"Cormorant Garamond",serif;font-size:22px;font-style:italic;color:#C9A84C;margin-bottom:12px}
+.ctag{font-size:13px;color:#6a8090;max-width:480px;margin:0 auto 28px;line-height:1.8}
+.chips{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.chip{border:1px solid rgba(201,168,76,0.5);color:#C9A84C;font-size:9px;letter-spacing:2px;padding:6px 18px;border-radius:20px;text-transform:uppercase}
+.pg{max-width:100%;padding:0}
+.sec{padding:28px 0;border-bottom:1px solid #e8e4dc;page-break-inside:avoid}
+.sl{font-size:8px;letter-spacing:4px;color:#C9A84C;text-transform:uppercase;margin-bottom:8px}
+.st{font-family:"Cormorant Garamond",serif;font-size:24px;font-weight:400;color:#0a0e14;margin-bottom:16px}
+p{color:#444;line-height:1.85}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.cl{font-size:8px;letter-spacing:3px;color:#aaa;text-transform:uppercase;margin-bottom:8px}
+.li{font-size:11px;color:#555;line-height:1.8;margin-bottom:3px}
+.hl{background:#FBF7EE;border-left:3px solid #C9A84C;padding:12px 16px;margin-top:12px;border-radius:0 4px 4px 0}
+.card{background:#F5F2EC;border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid #C9A84C}
+.cn{font-size:9px;color:#C9A84C;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+.g4{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.rm{padding-left:14px;border-left:2px solid #C9A84C;margin-bottom:14px}
+.ry{font-size:8px;color:#C9A84C;letter-spacing:3px;text-transform:uppercase;margin-bottom:3px}
+.ngrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.nc{background:#F5F2EC;border:1px solid #e8e4dc;border-radius:8px;padding:12px;text-align:center}
+.nn{font-family:"Cormorant Garamond",serif;font-size:32px;font-weight:300;color:#C9A84C}
+.nl{font-size:8px;letter-spacing:2px;color:#aaa;text-transform:uppercase;margin-top:4px}
+.qsec{background:#090E15;padding:50px 60px;text-align:center}
+.qt{font-family:"Cormorant Garamond",serif;font-size:20px;font-style:italic;font-weight:300;color:#F0EAD6;line-height:1.7;max-width:560px;margin:0 auto 12px}
+.qa{font-size:8px;color:#C9A84C;letter-spacing:4px;text-transform:uppercase}
+.ft{text-align:center;padding:16px;font-size:8px;color:#aaa;letter-spacing:1.5px}
+.skill-tag{display:inline-block;background:#EEF5F0;border:1px solid #c8e0cc;color:#4a7060;font-size:9px;padding:2px 8px;border-radius:4px;margin:2px}
+</style></head><body>
+<div class="cover">
+<div class="eyebrow">Personal Intelligence Report · ${new Date().toLocaleDateString("en-AU",{day:"numeric",month:"long",year:"numeric"})}</div>
+<div class="cname">${name}</div><div class="arch">${headline}</div><p class="ctag">${tagline}</p>
+<div class="chips"><span class="chip">${mbti}</span><span class="chip">Enneagram ${ennType}</span><span class="chip">DISC — ${discLabel}</span>${nums?`<span class="chip">Life Path ${nums.lp}</span><span class="chip">${nums.element}</span>`:""}</div>
+</div>
+<div class="pg">
+<div class="sec"><div class="sl">01 — Profile</div><div class="st">Who You Are</div><p>${report.summary}</p>${careerCtx.skills.length?`<div style="margin-top:10px">${careerCtx.skills.map(s=>`<span class="skill-tag">${s}</span>`).join("")}</div>`:""}</div>
+<div class="sec"><div class="sl">02 — Big Five OCEAN</div><div class="st">Personality Dimensions</div>${bars}</div>
+<div class="sec"><div class="sl">03 — MBTI</div><div class="st">${mbti} · ${mbtiData[0]}</div><p style="margin-bottom:10px">${mbtiData[1]}</p><div class="hl"><p><em>${mbtiData[2]}</em></p></div></div>
+<div class="sec"><div class="sl">04 — Enneagram</div><div class="st">Type ${ennType} · ${ennData.name}</div><p style="margin-bottom:10px">${ennData.core}</p><div class="g4"><div class="card"><div class="cn" style="color:#7DBF8A">Gift</div><p style="font-size:11px">${ennData.gift}</p></div><div class="card" style="border-color:#C9A84C"><div class="cn">Growth</div><p style="font-size:11px">${ennData.growth}</p></div><div class="card" style="border-color:#C97A7A"><div class="cn" style="color:#C97A7A">Stress</div><p style="font-size:11px">${ennData.stress}</p></div><div class="card" style="border-color:#7C9CBF"><div class="cn" style="color:#7C9CBF">Wing</div><p style="font-size:11px">${ennData.wing}</p></div></div></div>
+<div class="sec"><div class="sl">05 — Communication</div><div class="st">How to Work With ${name.split(" ")[0]}</div><p>${commStyle}</p></div>
+<div class="sec"><div class="sl">06 — Career</div><div class="st">Career Intelligence · ${careerCtx.archetype}</div><p style="color:#666;font-size:11px;margin-bottom:12px">${careerCtx.archetypeDesc}</p><div class="two"><div><div class="cl">Strengths</div>${strengths.map(s=>`<div class="li">◆ ${s}</div>`).join("")}</div><div><div class="cl">Three Paths Forward</div>${careerCtx.nextMoves.map((m,i)=>`<div class="li">0${i+1} → ${m.title}</div>`).join("")}</div></div><div class="hl"><p><strong>Blind spot:</strong> ${blind}</p></div></div>
+<div class="sec"><div class="sl">07 — Strategy</div><div class="st">3-Year Roadmap</div>${roadmap.map(r=>`<div class="rm"><div class="ry">${r.y} — ${r.t}</div><p>${r.a}</p></div>`).join("")}</div>
+${nums&&lpData?`<div class="sec"><div class="sl">08 — Numerology</div><div class="st">${nums.element} Element · Life Path ${nums.lp}</div><div class="ngrid">${[["Life Path",nums.lp],["Expression",nums.expr],["Soul Urge",nums.soul],["Birth Day",nums.bd],["Personality",nums.pers],["Personal Year",nums.py]].map(([l,n])=>`<div class="nc"><div class="nn">${n}</div><div class="nl">${l}</div></div>`).join("")}</div><p style="margin-bottom:8px"><strong>Life Path ${nums.lp} — ${lpData.name}:</strong> ${lpData.desc}</p><p>${nums.element} Element: ${elemData?.desc}</p><div class="hl"><p>${numSynthesis}</p></div></div>`:""}
+${soulPurpose?`<div class="sec"><div class="sl">09 — Soul Purpose</div><div class="st">${soulPurpose.missionType}</div><p style="margin-bottom:10px">${soulPurpose.mission}</p><div class="two"><div class="card" style="border-color:#7C9CBF"><div class="cn" style="color:#7C9CBF">Lesson</div><p style="font-size:11px">${soulPurpose.lesson}</p></div><div class="card" style="border-color:#7DBF8A"><div class="cn" style="color:#7DBF8A">Contribution</div><p style="font-size:11px">${soulPurpose.contribution}</p></div></div></div>`:""}
+<div class="sec"><div class="sl">10 — Wealth</div><div class="st">Financial Psychology</div><p style="margin-bottom:8px">${wealthPsych.frequency}</p><p style="margin-bottom:4px;color:#C97A7A"><strong>Block:</strong> ${wealthPsych.block}</p><p style="color:#4a7060"><strong>Strategy:</strong> ${wealthPsych.strategy}</p></div>
+${relData?`<div class="sec"><div class="sl">11 — Relationships</div><div class="st">Relationship Dynamics</div><p style="margin-bottom:10px">${relData.ideal}</p><div class="hl"><p><strong>Partner profile:</strong> ${relData.partner}</p></div></div>`:""}
+${roleModels?`<div class="sec"><div class="sl">12 — Role Models</div><div class="st">Strategic Archetypes to Model</div>${roleModels.models.map((m,i)=>`<p style="margin-bottom:6px"><strong>${i+1}. ${m.name}</strong> <em style="color:#aaa">${m.tag}</em><br><span style="font-size:11px;color:#666">${m.why}</span></p>`).join("")}</div>`:""}
+</div>
+${quote?`<div class="qsec"><p class="qt">"${quote}"</p><div class="qa">— ${headline}</div></div>`:""}
+<div class="ft">PERSONAL INTELLIGENCE ENGINE · ${name.toUpperCase()} · 🔒 ZERO DATA STORED · Generated ${new Date().toLocaleDateString("en-AU")}</div>
+</body></html>`;
+  const w=window.open("","_blank");
+  if(!w){alert("Please allow popups to generate PDF");return;}
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>{w.print();},600);
+}
 const MBTI_MAP = {INTJ:["Architect","Strategic, independent visionary who builds long-term frameworks. Makes decisions by internalising complex patterns.","Driven by mastery and systemic improvement — values competence above all."],INTP:["Logician","Analytical, inventive thinker who seeks to understand the underlying principles behind every system.","Motivated by truth and elegant solutions to complex problems."],ENTJ:["Commander","Bold, decisive, natural executive who builds efficient systems at scale. Sees the strategic picture and moves toward it.","Driven by achievement, leadership, and transformative impact."],ENTP:["Debater","Quick-witted innovator who thrives on intellectual challenge and disruption. Generates ideas faster than they can be executed.","Motivated by novel ideas and challenging the status quo."],INFJ:["Advocate","Insightful, principled, deeply empathetic with a long-term vision. Senses patterns in people and systems others miss.","Driven by meaningful contribution to something larger than themselves."],INFP:["Mediator","Idealistic, creative, deeply values-driven and authentic. Brings unusual depth of feeling to work and relationships.","Motivated by personal meaning, creativity, and helping others grow."],ENFJ:["Protagonist","Charismatic, inspiring leader focused on developing people. Reads the room intuitively and moves groups toward a shared vision.","Driven by enabling others to reach their full potential."],ENFP:["Campaigner","Enthusiastic, imaginative, energised by possibility and human connection. Sees potential everywhere.","Motivated by freedom, creativity, and making a positive difference."],ISTJ:["Logistician","Reliable, meticulous, duty-driven executor of structured systems. Builds trust through consistency, precision, and follow-through.","Driven by responsibility, accuracy, and proven methodologies."],ISFJ:["Defender","Warm, loyal, deeply committed to protecting and serving others. Remembers details about people and uses them to help.","Motivated by stability, helpfulness, and maintaining trusted structures."],ESTJ:["Executive","Organised, decisive, natural administrator who creates order from chaos. Sets clear expectations and holds to them.","Driven by efficiency, clear hierarchies, and tangible results."],ESFJ:["Consul","Caring, socially aware, focused on group harmony. Takes responsibility for the emotional climate of a team.","Motivated by belonging, helpfulness, and maintaining strong relationships."],ISTP:["Virtuoso","Pragmatic, observant, master of practical problem-solving. Engages fully when there's a real problem to solve.","Driven by understanding how things work and fixing them efficiently."],ISFP:["Adventurer","Flexible, charming, quietly creative and deeply values-aligned. Expresses identity through actions and aesthetics.","Motivated by authentic self-expression and present-moment engagement."],ESTP:["Entrepreneur","Bold, perceptive, action-oriented, thrives in dynamic environments. Negotiates and acts faster than most think.","Driven by immediate results, excitement, and practical impact."],ESFP:["Entertainer","Spontaneous, fun-loving, energises groups with warmth and enthusiasm. Fully present and generous in every interaction.","Motivated by enjoyment, social connection, and bringing joy to others."]};
 
 const ENN_DATA = {"1":{name:"The Reformer",core:"Motivated by doing things right — fears being corrupt, flawed, or wrong",gift:"Brings integrity, precision, and principled standards to every environment",growth:"Learn that imperfection is not failure — good enough is sometimes perfect",stress:"Under stress, becomes critical, rigid, and self-righteous",wing:"Leans toward Type 9 (calm idealist) or Type 2 (principled helper)"},"2":{name:"The Helper",core:"Motivated by being needed — fears being unloved or unwanted",gift:"Creates belonging and genuine care wherever they go",growth:"Receive help as readily as you give it — your needs matter equally",stress:"Under stress, becomes controlling, possessive, and resentful",wing:"Leans toward Type 1 (orderly helper) or Type 3 (ambitious helper)"},"3":{name:"The Achiever",core:"Motivated by success and recognition — fears being worthless or a failure",gift:"Turns vision into tangible results with remarkable efficiency",growth:"Your value exists independent of your achievements — rest is not regression",stress:"Under stress, becomes image-obsessed, deceptive, and workaholic",wing:"Leans toward Type 2 (charming achiever) or Type 4 (artistic achiever)"},"4":{name:"The Individualist",core:"Motivated by authenticity and depth — fears being ordinary or without identity",gift:"Brings creative depth, emotional intelligence, and originality",growth:"Ordinary moments contain extraordinary meaning — presence over drama",stress:"Under stress, becomes self-absorbed, moody, and withdrawn",wing:"Leans toward Type 3 (expressive achiever) or Type 5 (introspective artist)"},"5":{name:"The Investigator",core:"Motivated by knowledge and competence — fears being useless or overwhelmed",gift:"Provides the deepest expertise and most thorough analysis in any field",growth:"Share your knowledge before it is complete — connection requires vulnerability",stress:"Under stress, becomes detached, hoarding, and isolated",wing:"Leans toward Type 4 (imaginative investigator) or Type 6 (loyal analyst)"},"6":{name:"The Loyalist",core:"Motivated by security and support — fears being abandoned or without guidance",gift:"The most reliable, thorough, and trustworthy presence in any team",growth:"Your inner guidance is as trustworthy as external authority — trust it",stress:"Under stress, becomes anxious, suspicious, and reactive",wing:"Leans toward Type 5 (intellectual guardian) or Type 7 (optimistic loyalist)"},"7":{name:"The Enthusiast",core:"Motivated by freedom and possibility — fears pain, limitation, or missing out",gift:"Brings contagious optimism and the ability to see opportunity everywhere",growth:"Depth over breadth — staying with discomfort reveals what scattered energy misses",stress:"Under stress, becomes scattered, impulsive, and escapist",wing:"Leans toward Type 6 (grounded enthusiast) or Type 8 (assertive visionary)"},"8":{name:"The Challenger",core:"Motivated by control and strength — fears being controlled or appearing weak",gift:"Protects the vulnerable and creates change at a scale others cannot imagine",growth:"Vulnerability is strength — letting people in multiplies your impact",stress:"Under stress, becomes domineering, confrontational, and destructive",wing:"Leans toward Type 7 (bold expansionist) or Type 9 (calm protector)"},"9":{name:"The Peacemaker",core:"Motivated by harmony and peace — fears conflict and separation",gift:"Creates consensus and an environment where everyone feels included",growth:"Your presence and opinion matter — showing up fully is an act of love",stress:"Under stress, becomes disengaged, stubborn, and avoidant",wing:"Leans toward Type 8 (assertive mediator) or Type 1 (principled peacemaker)"}};
@@ -406,27 +554,73 @@ export default function App(){
   function Tag({children,c}){return <span style={{background:T.inputBackground,border:"1px solid rgba(201,168,76,0.4)",color:c||G,fontSize:9,letterSpacing:1.5,padding:"4px 11px",borderRadius:20,textTransform:"uppercase"}}>{children}</span>;}
   function InfoCard({label,text,color}){return <div style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+(color||G)}}><div style={{fontSize:9,color:color||G,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>{label}</div><p style={{...bod,fontSize:12,color:DM}}>{text}</p></div>;}
 
+
   const[mode,setMode]=useState("main");
   const[stage,setStage]=useState("form");
   const[name,setName]=useState(""),  [dob,setDob]=useState(""),  [role,setRole]=useState(""),  [bg,setBg]=useState("");
   const[file,setFile]=useState(null),[rText,setRText]=useState("");
   const[report,setReport]=useState(null);
   const[consent,setConsent]=useState(false);
+  const[industryAnswers,setIndustryAnswers]=useState({});
+  const[linkedinUrl,setLinkedinUrl]=useState("");
+  const[linkedinPaste,setLinkedinPaste]=useState("");
+  const[showLinkedin,setShowLinkedin]=useState(false);
+  const[copied,setCopied]=useState(false);
   const[c1,setC1]=useState({name:"",dob:"",role:"",bg:"",file:null,rText:"",report:null});
   const[c2,setC2]=useState({name:"",dob:"",role:"",bg:"",file:null,rText:"",report:null});
   const[compat,setCompat]=useState(null);
   const fileRef=useRef(),cf1=useRef(),cf2=useRef();
   let liveNums=null;if(name&&dob){try{liveNums=calcNums(name,dob);}catch{liveNums=null;}}
   const firstName=name?name.trim().split(" ")[0]:"";
+  const detectedIndustry=detectIndustryQs(role,bg);
+  const industryQs=detectedIndustry?INDUSTRY_QUESTIONS[detectedIndustry]:null;
+
+  function buildExtraContext(){
+    const parts=[];
+    Object.values(industryAnswers).forEach(kw=>{if(kw)parts.push(kw);});
+    if(linkedinPaste)parts.push(linkedinPaste);
+    if(linkedinUrl)parts.push("linkedin professional profile");
+    return parts.join(" ");
+  }
+
+  useEffect(()=>{
+    const hash=window.location.hash.slice(1);
+    if(!hash)return;
+    const data=decodeShare(hash);
+    if(!data)return;
+    if(data.n)setName(data.n);
+    if(data.d)setDob(data.d);
+    if(data.r)setRole(data.r);
+    if(data.b)setBg(data.b);
+    if(data.li)setLinkedinUrl(data.li);
+    if(data.autoGen&&data.n){
+      const nums=(data.n&&data.d)?calcNums(data.n,data.d):null;
+      setReport(buildReport(data.n,data.r||"",data.b||"","",nums));
+      setStage("report");
+    }
+  },[]);
 
   function generate(){
     if(!name)return;
     const nums=(name&&dob)?calcNums(name,dob):null;
-    const r=buildReport(name,role,bg,rText,nums);
+    const extra=buildExtraContext();
+    const r=buildReport(name,role,bg,rText+" "+extra,nums);
     setReport(r);
     if(consent)saveAnonymousReport(r);
+    const shareData={n:name,d:dob,r:role,b:bg,li:linkedinUrl||""};
+    const hash=encodeShare(shareData);
+    if(hash)window.history.replaceState(null,null,"#"+hash);
     setStage("report");
   }
+
+  function copyShareLink(){
+    const shareData={n:name,d:dob,r:role,b:bg,li:linkedinUrl||"",autoGen:true};
+    const hash=encodeShare(shareData);
+    if(!hash)return;
+    const url=window.location.origin+window.location.pathname+"#"+hash;
+    navigator.clipboard.writeText(url).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2500);}).catch(()=>{prompt("Copy this link:",url);});
+  }
+
   function runCompat(){
     if(!c1.name||!c2.name)return;
     const n1=(c1.name&&c1.dob)?calcNums(c1.name,c1.dob):null;
@@ -436,7 +630,11 @@ export default function App(){
     setC1(p=>({...p,report:r1}));setC2(p=>({...p,report:r2}));
     setCompat(analyseCompatibility(r1,r2));setStage("compat");
   }
-  function reset(){setStage("form");setName("");setDob("");setRole("");setBg("");setFile(null);setRText("");setReport(null);setConsent(false);}
+  function reset(){
+    setStage("form");setName("");setDob("");setRole("");setBg("");setFile(null);setRText("");setReport(null);setConsent(false);setIndustryAnswers({});setLinkedinUrl("");setLinkedinPaste("");setShowLinkedin(false);setCopied(false);
+    window.history.replaceState(null,null,window.location.pathname);
+  }
+
 
   const ThemeBtn=()=>(
     <button onClick={()=>setDark(d=>!d)} title={dark?"Switch to Light Mode":"Switch to Dark Mode"}
@@ -496,6 +694,47 @@ export default function App(){
         <div onClick={()=>fileRef.current.click()} style={{background:T.inputBackground,border:"2px dashed "+(file?G:BR),borderRadius:10,padding:16,textAlign:"center",cursor:"pointer",marginBottom:12,transition:"border-color 0.2s"}}>
           {file?<><span style={{fontSize:14}}>✓ </span><span style={{color:G,fontSize:12,fontWeight:600}}>{file.name}</span><div style={{fontSize:10,color:FA,marginTop:2}}>Resume loaded — career section will be personalised</div></>:<><span style={{fontSize:18}}>📄</span><br/><span style={{color:FA,fontSize:12}}>Upload for career-specific insights (optional)</span></>}
         </div>
+
+        {/* LinkedIn Import */}
+        <div style={{marginBottom:12}}>
+          <button onClick={()=>setShowLinkedin(s=>!s)} style={{width:"100%",padding:"10px 14px",background:T.inputBackground,border:"1px solid "+BR,borderRadius:9,color:DM,fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:8,textAlign:"left"}}>
+            <span style={{fontSize:14}}>🔗</span>
+            <span>Import from LinkedIn <span style={{color:FA,fontSize:10}}>(optional — paste your About + Experience)</span></span>
+            <span style={{marginLeft:"auto",color:FA}}>{showLinkedin?"▲":"▼"}</span>
+          </button>
+          {showLinkedin&&<div style={{background:T.inputBackground,border:"1px solid "+BR,borderRadius:"0 0 9px 9px",padding:"14px",marginTop:-1}}>
+            <input style={{...inp,marginBottom:8,fontSize:12}} placeholder="LinkedIn profile URL (e.g. linkedin.com/in/yourname)" value={linkedinUrl} onChange={e=>setLinkedinUrl(e.target.value)}/>
+            <p style={{fontSize:10,color:FA,lineHeight:1.6,marginBottom:8}}>
+              💡 LinkedIn blocks direct fetching (CORS). To import your profile: open LinkedIn → copy your <strong style={{color:DM}}>About section + top 3 job descriptions</strong> → paste below. This improves career insight accuracy significantly.
+            </p>
+            <textarea style={{...inp,height:90,resize:"none",fontSize:11}} placeholder="Paste your LinkedIn About section and work experience here..." value={linkedinPaste} onChange={e=>setLinkedinPaste(e.target.value)}/>
+            {linkedinPaste&&<p style={{fontSize:10,color:"#7DBF8A",marginTop:4}}>✓ {linkedinPaste.split(" ").length} words imported — career scoring will improve</p>}
+          </div>}
+        </div>
+
+        {/* Industry-Specific Questions */}
+        {industryQs&&(
+          <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,border:"1px solid "+G.replace("#","rgba(").replace(/(..)(..)(..)$/,"$1,$2,$3,0.2)").replace("rgba(","rgba(")}}>
+            <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:10,fontWeight:600}}>
+              🎯 {industryQs.label} — Tailored Questions
+            </div>
+            <p style={{fontSize:10,color:FA,marginBottom:12,lineHeight:1.5}}>We detected your industry. Answer these to sharpen your report:</p>
+            {industryQs.qs.map(q=>(
+              <div key={q.id} style={{marginBottom:12}}>
+                <div style={{fontSize:11,color:TX,marginBottom:6,fontWeight:500}}>{q.q}</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                  {q.opts.map(o=>(
+                    <button key={o.l} onClick={()=>setIndustryAnswers(a=>({...a,[q.id]:a[q.id]===o.kw?"":o.kw}))}
+                      style={{padding:"5px 12px",borderRadius:6,border:"1px solid "+(industryAnswers[q.id]===o.kw?G:BR),background:industryAnswers[q.id]===o.kw?"rgba(201,168,76,0.12)":T.pageBackground,color:industryAnswers[q.id]===o.kw?G:DM,fontSize:10,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.15s"}}>
+                      {o.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {Object.keys(industryAnswers).length>0&&<p style={{fontSize:10,color:G}}>✓ {Object.values(industryAnswers).filter(Boolean).length} answer{Object.values(industryAnswers).filter(Boolean).length!==1?"s":""} selected — report will be more specific</p>}
+          </div>
+        )}
 
         {/* Privacy note + Consent */}
         <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:16,border:"1px solid "+BR}}>
@@ -642,7 +881,16 @@ export default function App(){
         </div>
 
         <div style={{padding:"0 28px"}}>
-          <button style={btnL} onClick={reset}>← New Report</button>
+          {/* Action Bar */}
+          <div style={{display:"flex",gap:8,marginBottom:20}}>
+            <button onClick={()=>printToPDF(report,dob)} style={{flex:2,padding:"12px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              <span>⬇</span> Download PDF
+            </button>
+            <button onClick={copyShareLink} style={{flex:1,padding:"12px",background:T.inputBackground,border:`1px solid ${copied?G:BR}`,borderRadius:10,fontSize:12,color:copied?G:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+              <span>{copied?"✓":"🔗"}</span>{copied?"Copied!":"Share"}
+            </button>
+            <button onClick={reset} style={{padding:"12px 14px",background:T.inputBackground,border:"1px solid "+BR,borderRadius:10,fontSize:12,color:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← New</button>
+          </div>
 
           {/* Who You Are */}
           <Sec title="Who You Are">
@@ -941,7 +1189,11 @@ export default function App(){
             <span style={{fontSize:14}}>🔒</span>
             <p style={{fontSize:10,color:FA,lineHeight:1.6,margin:0}}>Your data was never sent anywhere. This report was generated entirely in your browser. Closing this tab deletes everything.{consent&&" Your anonymous patterns were saved locally per your preference."}</p>
           </div>
-          <button style={btnG} onClick={reset}>Generate Another Report</button>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>printToPDF(report,dob)} style={{flex:2,padding:"14px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>⬇ Download PDF</button>
+            <button onClick={copyShareLink} style={{flex:1,padding:"14px",background:T.inputBackground,border:`1px solid ${copied?G:BR}`,borderRadius:10,fontSize:12,color:copied?G:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s"}}>{copied?"✓ Copied":"🔗 Share"}</button>
+          </div>
+          <button onClick={reset} style={{width:"100%",marginTop:8,padding:"12px",background:"transparent",border:"1px solid "+BR,borderRadius:10,fontSize:12,color:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← Generate Another Report</button>
         </div>
       </div></div>
     );

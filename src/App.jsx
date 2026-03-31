@@ -550,9 +550,33 @@ export default function App(){
   const bod={color:T.bodColor,fontSize:13,lineHeight:1.9};
   const hl={background:"rgba(201,168,76,0.07)",borderLeft:"3px solid #C9A84C",borderRadius:"0 8px 8px 0",padding:"12px 16px",marginTop:12};
 
-  function Sec({title,sub,children}){return <div style={{marginBottom:24,borderBottom:"1px solid "+BR,paddingBottom:22}}><div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:12}}><span style={{fontSize:9,letterSpacing:3,color:G,textTransform:"uppercase"}}>{title}</span>{sub&&<span style={{fontSize:11,color:FA}}>— {sub}</span>}</div>{children}</div>;}
+  function Sec({id,title,sub,children,copyText}){
+    const isCollapsed=collapsed[id||title];
+    return(
+      <div id={`sec-${id||title}`} style={{marginBottom:24,borderBottom:"1px solid "+BR,paddingBottom:isCollapsed?0:22}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:isCollapsed?12:12,cursor:"pointer"}} onClick={()=>id&&toggleSection(id||title)}>
+          <span style={{fontSize:9,letterSpacing:3,color:G,textTransform:"uppercase",flex:1}}>{title}{sub&&<span style={{color:FA,letterSpacing:0,textTransform:"none",fontSize:10,fontWeight:400}}> — {sub}</span>}</span>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            {copyText&&<button onClick={e=>{e.stopPropagation();copyInsight(id,copyText);}} style={{background:"transparent",border:"1px solid "+BR,borderRadius:4,padding:"2px 7px",fontSize:9,color:copiedId===id?G:FA,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{copiedId===id?"✓ Copied":"Copy"}</button>}
+            {id&&<span style={{fontSize:10,color:FA,transition:"transform 0.2s",display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)"}}>▾</span>}
+          </div>
+        </div>
+        {!isCollapsed&&children}
+      </div>
+    );
+  }
   function Tag({children,c}){return <span style={{background:T.inputBackground,border:"1px solid rgba(201,168,76,0.4)",color:c||G,fontSize:9,letterSpacing:1.5,padding:"4px 11px",borderRadius:20,textTransform:"uppercase"}}>{children}</span>;}
-  function InfoCard({label,text,color}){return <div style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+(color||G)}}><div style={{fontSize:9,color:color||G,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>{label}</div><p style={{...bod,fontSize:12,color:DM}}>{text}</p></div>;}
+  function InfoCard({label,text,color,copyId}){
+    return(
+      <div style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+(color||G),position:"relative"}}>
+        <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:4}}>
+          <div style={{fontSize:9,color:color||G,letterSpacing:1.5,textTransform:"uppercase"}}>{label}</div>
+          {copyId&&text&&<button onClick={()=>copyInsight(copyId,text)} style={{background:"transparent",border:"none",fontSize:9,color:copiedId===copyId?G:FA,cursor:"pointer",padding:0,fontFamily:"'DM Sans',sans-serif"}}>{copiedId===copyId?"✓":"⎘"}</button>}
+        </div>
+        <p style={{...bod,fontSize:12,color:DM}}>{text}</p>
+      </div>
+    );
+  }
 
 
   const[mode,setMode]=useState("main");
@@ -566,6 +590,13 @@ export default function App(){
   const[linkedinPaste,setLinkedinPaste]=useState("");
   const[showLinkedin,setShowLinkedin]=useState(false);
   const[copied,setCopied]=useState(false);
+  const[copiedId,setCopiedId]=useState(null);
+  const[loading,setLoading]=useState(false);
+  const[loadStep,setLoadStep]=useState(0);
+  const[collapsed,setCollapsed]=useState({});
+  const[rating,setRating]=useState(0);
+  const[ratingDone,setRatingDone]=useState(false);
+  const[activeSection,setActiveSection]=useState(0);
   const[c1,setC1]=useState({name:"",dob:"",role:"",bg:"",file:null,rText:"",report:null});
   const[c2,setC2]=useState({name:"",dob:"",role:"",bg:"",file:null,rText:"",report:null});
   const[compat,setCompat]=useState(null);
@@ -574,6 +605,9 @@ export default function App(){
   const firstName=name?name.trim().split(" ")[0]:"";
   const detectedIndustry=detectIndustryQs(role,bg);
   const industryQs=detectedIndustry?INDUSTRY_QUESTIONS[detectedIndustry]:null;
+
+  // Form progress (0-4)
+  const formProgress=Math.min(4,[name,dob,role||bg,file||rText].filter(Boolean).length);
 
   function buildExtraContext(){
     const parts=[];
@@ -600,17 +634,27 @@ export default function App(){
     }
   },[]);
 
+  // Loading animation sequence
+  const LOAD_STEPS=["Parsing your profile...","Scoring OCEAN dimensions...","Deriving MBTI from Big Five...","Matching Enneagram patterns...","Calculating numerology...","Building career insights...","Your report is ready ✓"];
   function generate(){
     if(!name)return;
-    const nums=(name&&dob)?calcNums(name,dob):null;
-    const extra=buildExtraContext();
-    const r=buildReport(name,role,bg,rText+" "+extra,nums);
-    setReport(r);
-    if(consent)saveAnonymousReport(r);
-    const shareData={n:name,d:dob,r:role,b:bg,li:linkedinUrl||""};
-    const hash=encodeShare(shareData);
-    if(hash)window.history.replaceState(null,null,"#"+hash);
-    setStage("report");
+    setLoading(true);setLoadStep(0);
+    let step=0;
+    const timer=setInterval(()=>{
+      step++;setLoadStep(step);
+      if(step>=LOAD_STEPS.length-1){
+        clearInterval(timer);
+        const nums=(name&&dob)?calcNums(name,dob):null;
+        const extra=buildExtraContext();
+        const r=buildReport(name,role,bg,rText+" "+extra,nums);
+        setReport(r);
+        if(consent)saveAnonymousReport(r);
+        const shareData={n:name,d:dob,r:role,b:bg,li:linkedinUrl||""};
+        const hash=encodeShare(shareData);
+        if(hash)window.history.replaceState(null,null,"#"+hash);
+        setTimeout(()=>{setLoading(false);setStage("report");},400);
+      }
+    },420);
   }
 
   function copyShareLink(){
@@ -620,6 +664,12 @@ export default function App(){
     const url=window.location.origin+window.location.pathname+"#"+hash;
     navigator.clipboard.writeText(url).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2500);}).catch(()=>{prompt("Copy this link:",url);});
   }
+
+  function copyInsight(id,text){
+    navigator.clipboard.writeText(text).then(()=>{setCopiedId(id);setTimeout(()=>setCopiedId(null),1800);}).catch(()=>{});
+  }
+
+  function toggleSection(key){setCollapsed(c=>({...c,[key]:!c[key]}));}
 
   function runCompat(){
     if(!c1.name||!c2.name)return;
@@ -631,7 +681,7 @@ export default function App(){
     setCompat(analyseCompatibility(r1,r2));setStage("compat");
   }
   function reset(){
-    setStage("form");setName("");setDob("");setRole("");setBg("");setFile(null);setRText("");setReport(null);setConsent(false);setIndustryAnswers({});setLinkedinUrl("");setLinkedinPaste("");setShowLinkedin(false);setCopied(false);
+    setStage("form");setName("");setDob("");setRole("");setBg("");setFile(null);setRText("");setReport(null);setConsent(false);setIndustryAnswers({});setLinkedinUrl("");setLinkedinPaste("");setShowLinkedin(false);setCopied(false);setCopiedId(null);setLoading(false);setLoadStep(0);setCollapsed({});setRating(0);setRatingDone(false);setActiveSection(0);
     window.history.replaceState(null,null,window.location.pathname);
   }
 
@@ -651,14 +701,65 @@ export default function App(){
     </div>
   );
 
+  // ── LOADING SCREEN ────────────────────────────────
+  if(loading) return(
+    <div style={{...pg,alignItems:"center"}}>
+      <div style={{...crd,textAlign:"center",padding:"52px 32px"}}>
+        <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:28}}>Generating Report</div>
+        {/* Animated ring */}
+        <div style={{position:"relative",width:80,height:80,margin:"0 auto 28px"}}>
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" fill="none" stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="5"/>
+            <circle cx="40" cy="40" r="34" fill="none" stroke={G} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(loadStep/LOAD_STEPS.length)*213} 213`} transform="rotate(-90 40 40)" style={{transition:"stroke-dasharray 0.4s ease"}}/>
+          </svg>
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:G,fontFamily:"'DM Sans',sans-serif"}}>
+            {Math.round((loadStep/LOAD_STEPS.length)*100)}%
+          </div>
+        </div>
+        {/* Steps */}
+        <div style={{maxWidth:280,margin:"0 auto"}}>
+          {LOAD_STEPS.map((s,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,opacity:i<=loadStep?1:0.25,transition:"opacity 0.3s"}}>
+              <div style={{width:16,height:16,borderRadius:"50%",background:i<loadStep?G:i===loadStep?"rgba(201,168,76,0.3)":dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.05)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",transition:"background 0.3s"}}>
+                {i<loadStep&&<span style={{fontSize:8,color:"#090E15",fontWeight:700}}>✓</span>}
+                {i===loadStep&&<div style={{width:6,height:6,borderRadius:"50%",background:G}}/>}
+              </div>
+              <span style={{fontSize:11,color:i===loadStep?TX:FA,textAlign:"left",transition:"color 0.3s"}}>{s}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   // ── FORM ─────────────────────────────────────────
   if(stage==="form") return(
     <div style={pg}><ThemeBtn/><div style={crd}>
-      <div style={{textAlign:"center",marginBottom:28}}>
+      <div style={{textAlign:"center",marginBottom:20}}>
         <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:12}}>Personal Intelligence Engine</div>
         <h1 style={{fontSize:38,color:TX,lineHeight:1.1,fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300}}>Know Your<br/><em style={{color:G}}>True Self</em></h1>
         <p style={{fontSize:13,color:DM,lineHeight:1.7,marginTop:10}}>Big Five · MBTI · Enneagram · DISC · Numerology · Soul Purpose</p>
       </div>
+
+      {/* Progress Steps */}
+      {mode==="main"&&<div style={{marginBottom:24}}>
+        <div style={{display:"flex",alignItems:"center",gap:0,marginBottom:8}}>
+          {["Name","Birth date","Role","CV / Context"].map((s,i)=>{
+            const done=i<formProgress,active=i===formProgress;
+            return(
+              <div key={i} style={{display:"flex",alignItems:"center",flex:1}}>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",flex:"none"}}>
+                  <div style={{width:24,height:24,borderRadius:"50%",background:done?G:active?"rgba(201,168,76,0.2)":T.inputBackground,border:`2px solid ${done||active?G:BR}`,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.3s",fontSize:10,color:done?"#090E15":active?G:FA,fontWeight:700}}>
+                    {done?"✓":i+1}
+                  </div>
+                  <span style={{fontSize:8,color:done||active?G:FA,marginTop:3,letterSpacing:0.5,whiteSpace:"nowrap"}}>{s}</span>
+                </div>
+                {i<3&&<div style={{flex:1,height:2,background:i<formProgress?G:BR,transition:"background 0.3s",marginBottom:14}}/>}
+              </div>
+            );
+          })}
+        </div>
+      </div>}
       <Nav/>
       {mode==="main"&&<>
         <label style={lbl}>Your Full Name *</label>
@@ -851,265 +952,302 @@ export default function App(){
   if(stage==="report"&&report){
     const{headline,tagline,summary,ocean,oceanText,mbti,mbtiData,ennType,ennData,discLabel,strengths,blind,wealthPsych,roadmap,growth,quote,commStyle,numSynthesis,nums,lpData,elemData,careerCtx,soulPurpose,relData,roleModels,dailyProtocol,decisionTiming,lifeJourney}=report;
     const headerBg=dark?"linear-gradient(160deg,#090E15 0%,#131F2D 100%)":"linear-gradient(160deg,#F0EDE6 0%,#E8E4DA 100%)";
+
+    // TOC sections
+    const TOC_ITEMS=[
+      {id:"profile",label:"Who You Are"},
+      {id:"ocean",label:"Big Five OCEAN"},
+      {id:"mbti",label:"MBTI"},
+      {id:"enneagram",label:"Enneagram"},
+      {id:"comms",label:"Communication"},
+      {id:"career",label:"Career"},
+      {id:"roadmap",label:"Roadmap"},
+      ...(nums?[{id:"numerology",label:"Numerology"}]:[]),
+      ...(decisionTiming?[{id:"timing",label:"Decision Timing"}]:[]),
+      ...(soulPurpose?[{id:"soul",label:"Soul Purpose"}]:[]),
+      {id:"daily",label:"Daily Protocol"},
+      {id:"wealth",label:"Wealth"},
+      ...(relData?[{id:"relationships",label:"Relationships"}]:[]),
+      ...(lifeJourney?[{id:"journey",label:"Life Journey"}]:[]),
+      ...(roleModels?[{id:"rolemodels",label:"Role Models"}]:[]),
+      {id:"growth",label:"Growth Edges"},
+      {id:"methodology",label:"Methodology"},
+    ];
+
+    // mobile responsive grid helper
+    const grid2={display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8};
+    const grid3={display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginBottom:14};
+
     return(
-      <div style={pg}><ThemeBtn/><div style={wid}>
-        {/* HEADER */}
-        <div style={{background:headerBg,borderRadius:"20px 20px 0 0",padding:"52px 36px 44px",textAlign:"center",borderBottom:"1px solid "+BR,marginBottom:28,position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"radial-gradient(ellipse at 40% 50%,rgba(201,168,76,0.05) 0%,transparent 60%)",pointerEvents:"none"}}/>
-          <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:14}}>Personal Intelligence Report</div>
-          <h1 style={{fontSize:28,color:TX,margin:"8px 0 6px",fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300}}>{name}</h1>
-          <p style={{fontSize:16,color:G,fontStyle:"italic",margin:"0 0 6px",fontFamily:"'Cormorant Garamond',serif"}}>{headline}</p>
-          <p style={{fontSize:12,color:DM,fontStyle:"italic",margin:"0 0 18px",lineHeight:1.6,maxWidth:400,marginLeft:"auto",marginRight:"auto"}}>{tagline}</p>
-          <div style={{display:"flex",justifyContent:"center",gap:7,flexWrap:"wrap",marginBottom:18}}>
-            {[mbti,"Enneagram "+ennType,"DISC — "+discLabel,...(nums?["Life Path "+nums.lp,nums.element]:[]),...(careerCtx.industry!=="general"?[careerCtx.industry]:[])].map(t=><Tag key={t}>{t}</Tag>)}
-          </div>
-          <div style={{display:"flex",justifyContent:"center",gap:14,flexWrap:"wrap"}}>
-            {Object.entries(ocean).map(([k,v])=>{
-              const r=20,circ=2*Math.PI*r,dash=(v/100)*circ;
-              return(
-                <div key={k} style={{textAlign:"center"}}>
-                  <svg width="52" height="52" viewBox="0 0 52 52">
-                    <circle cx="26" cy="26" r={r} fill="none" stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="4"/>
-                    <circle cx="26" cy="26" r={r} fill="none" stroke={BC[k]} strokeWidth="4" strokeDasharray={dash+" "+(circ-dash)} strokeLinecap="round" transform="rotate(-90 26 26)"/>
-                    <text x="26" y="30" textAnchor="middle" fontSize="11" fontWeight="600" fill={BC[k]} fontFamily="DM Sans,sans-serif">{v}</text>
-                  </svg>
-                  <div style={{fontSize:8,color:FA,letterSpacing:1,textTransform:"uppercase",marginTop:2}}>{BL[k].slice(0,4)}</div>
-                </div>
-              );
-            })}
-          </div>
+      <div style={{...pg,position:"relative"}}>
+        <ThemeBtn/>
+
+        {/* Floating TOC — hidden on very small screens via width check */}
+        <div style={{position:"fixed",left:8,top:"50%",transform:"translateY(-50%)",zIndex:50,display:"flex",flexDirection:"column",gap:3,maxHeight:"80vh",overflowY:"auto"}}>
+          {TOC_ITEMS.map((item,i)=>(
+            <button key={item.id} onClick={()=>{const el=document.getElementById("sec-"+item.id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});setActiveSection(i);}}
+              style={{width:6,height:activeSection===i?24:8,borderRadius:3,background:activeSection===i?G:dark?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.12)",border:"none",cursor:"pointer",transition:"all 0.25s",padding:0,display:"block"}} title={item.label}/>
+          ))}
         </div>
 
-        <div style={{padding:"0 28px"}}>
-          {/* Action Bar */}
-          <div style={{display:"flex",gap:8,marginBottom:20}}>
-            <button onClick={()=>printToPDF(report,dob)} style={{flex:2,padding:"12px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-              <span>⬇</span> Download PDF
-            </button>
-            <button onClick={copyShareLink} style={{flex:1,padding:"12px",background:T.inputBackground,border:`1px solid ${copied?G:BR}`,borderRadius:10,fontSize:12,color:copied?G:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
-              <span>{copied?"✓":"🔗"}</span>{copied?"Copied!":"Share"}
-            </button>
-            <button onClick={reset} style={{padding:"12px 14px",background:T.inputBackground,border:"1px solid "+BR,borderRadius:10,fontSize:12,color:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← New</button>
+        <div style={wid}>
+          {/* HEADER */}
+          <div style={{background:headerBg,borderRadius:"20px 20px 0 0",padding:"clamp(32px,6vw,52px) clamp(16px,5vw,36px) 44px",textAlign:"center",borderBottom:"1px solid "+BR,marginBottom:28,position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"radial-gradient(ellipse at 40% 50%,rgba(201,168,76,0.05) 0%,transparent 60%)",pointerEvents:"none"}}/>
+            <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:14}}>Personal Intelligence Report</div>
+            <h1 style={{fontSize:"clamp(22px,5vw,28px)",color:TX,margin:"8px 0 6px",fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300}}>{name}</h1>
+            <p style={{fontSize:16,color:G,fontStyle:"italic",margin:"0 0 6px",fontFamily:"'Cormorant Garamond',serif"}}>{headline}</p>
+            <p style={{fontSize:12,color:DM,fontStyle:"italic",margin:"0 0 18px",lineHeight:1.6,maxWidth:400,marginLeft:"auto",marginRight:"auto"}}>{tagline}</p>
+            <div style={{display:"flex",justifyContent:"center",gap:6,flexWrap:"wrap",marginBottom:18}}>
+              {[mbti,"Enneagram "+ennType,"DISC — "+discLabel,...(nums?["Life Path "+nums.lp,nums.element]:[]),...(careerCtx.industry!=="general"?[careerCtx.industry]:[])].map(t=><Tag key={t}>{t}</Tag>)}
+            </div>
+            <div style={{display:"flex",justifyContent:"center",gap:"clamp(8px,2vw,14px)",flexWrap:"wrap"}}>
+              {Object.entries(ocean).map(([k,v])=>{
+                const r=20,circ=2*Math.PI*r,dash=(v/100)*circ;
+                return(
+                  <div key={k} style={{textAlign:"center"}}>
+                    <svg width="48" height="48" viewBox="0 0 52 52">
+                      <circle cx="26" cy="26" r={r} fill="none" stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="4"/>
+                      <circle cx="26" cy="26" r={r} fill="none" stroke={BC[k]} strokeWidth="4" strokeDasharray={dash+" "+(circ-dash)} strokeLinecap="round" transform="rotate(-90 26 26)"/>
+                      <text x="26" y="30" textAnchor="middle" fontSize="11" fontWeight="600" fill={BC[k]} fontFamily="DM Sans,sans-serif">{v}</text>
+                    </svg>
+                    <div style={{fontSize:8,color:FA,letterSpacing:1,textTransform:"uppercase",marginTop:2}}>{BL[k].slice(0,4)}</div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Who You Are */}
-          <Sec title="Who You Are">
-            <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:22,alignItems:"center"}}>
-              {/* Radar */}
-              {(()=>{
-                const dims=["O","C","E","A","N"],labels=["Open","Consc","Extra","Agree","Stable"],colors=["#7C9CBF","#C9A84C","#7DBF8A","#C97A7A","#B07DBF"];
-                const cx=110,cy=110,r=75,n=dims.length;
-                const angle=i=>(Math.PI*2*(i/n))-Math.PI/2;
-                const pt=(i,val)=>{const a=angle(i),pct=val/100;return[cx+r*pct*Math.cos(a),cy+r*pct*Math.sin(a)];};
-                const poly=dims.map((d,i)=>pt(i,ocean[d])).map(p=>p.join(",")).join(" ");
-                return(
-                  <svg viewBox="0 0 220 220" style={{width:"100%",maxWidth:200,display:"block",margin:"0 auto"}}>
-                    {[0.25,0.5,0.75,1].map(pct=>{const pts=dims.map((_,i)=>{const a=angle(i);return[cx+r*pct*Math.cos(a),cy+r*pct*Math.sin(a)].join(",")}).join(" ");return <polygon key={pct} points={pts} fill="none" stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="1"/>;})}
-                    {dims.map((_,i)=>{const[x,y]=pt(i,1);return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="1"/>;;})}
-                    <polygon points={poly} fill="rgba(201,168,76,0.12)" stroke="#C9A84C" strokeWidth="1.5" strokeLinejoin="round"/>
-                    {dims.map((d,i)=>{const[x,y]=pt(i,ocean[d]);return <circle key={d} cx={x} cy={y} r="4" fill={colors[i]}/>;;})}
-                    {dims.map((d,i)=>{const a=angle(i),lx=cx+(r+22)*Math.cos(a),ly=cy+(r+22)*Math.sin(a);return <text key={d} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize="8.5" fill={colors[i]} fontFamily="DM Sans,sans-serif" fontWeight="500">{labels[i]}</text>;})}
-                  </svg>
-                );
-              })()}
-              <div>
-                <p style={bod}>{summary}</p>
-                {careerCtx.skills.length>0&&<div style={{marginTop:10,display:"flex",gap:5,flexWrap:"wrap"}}>
-                  {careerCtx.skills.map(s=><span key={s} style={{fontSize:9,color:"#7DBF8A",background:"rgba(125,191,138,0.07)",border:"1px solid rgba(125,191,138,0.2)",padding:"3px 9px",borderRadius:4}}>{s}</span>)}
-                </div>}
-              </div>
+          <div style={{padding:"0 clamp(12px,4vw,28px)"}}>
+            {/* Action Bar */}
+            <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>
+              <button onClick={()=>printToPDF(report,dob)} style={{flex:"2 1 120px",padding:"12px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                ⬇ Download PDF
+              </button>
+              <button onClick={copyShareLink} style={{flex:"1 1 80px",padding:"12px",background:T.inputBackground,border:`1px solid ${copied?G:BR}`,borderRadius:10,fontSize:12,color:copied?G:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s"}}>
+                {copied?"✓ Copied":"🔗 Share"}
+              </button>
+              <button onClick={reset} style={{flex:"1 1 70px",padding:"12px",background:T.inputBackground,border:"1px solid "+BR,borderRadius:10,fontSize:12,color:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← New</button>
             </div>
-          </Sec>
 
-          {/* OCEAN */}
-          <Sec title="Big Five — OCEAN" sub="Personality Dimensions">
-            {Object.entries(ocean).map(([k,v])=>(
-              <div key={k} style={{marginBottom:16}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                  <span style={{fontSize:10,color:BC[k],letterSpacing:1,fontWeight:500,textTransform:"uppercase"}}>{BL[k]}</span>
-                  <span style={{fontSize:12,color:BC[k],fontWeight:600}}>{v}%</span>
-                </div>
-                <div style={{height:4,background:T.inputBackground,borderRadius:2,overflow:"hidden",marginBottom:5}}><div style={{height:"100%",width:v+"%",background:BC[k],borderRadius:2}}/></div>
-                <p style={{...bod,fontSize:11,color:FA}}>{oceanText[k]}</p>
-              </div>
-            ))}
-          </Sec>
-
-          {/* MBTI */}
-          <Sec title={"MBTI — "+mbti} sub={mbtiData[0]}>
-            <p style={bod}>{mbtiData[1]}</p>
-            <div style={hl}><p style={{...bod,fontStyle:"italic",fontSize:12}}>{mbtiData[2]}</p></div>
-          </Sec>
-
-          {/* Enneagram */}
-          <Sec title={"Enneagram — Type "+ennType} sub={ennData.name}>
-            <p style={{...bod,marginBottom:12}}>{ennData.core}</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              {[["Gift",ennData.gift,"#7DBF8A"],["Growth",ennData.growth,G],["Under Stress",ennData.stress,"#C97A7A"],["Wing",ennData.wing,"#7C9CBF"]].map(([l,t,c])=><InfoCard key={l} label={l} text={t} color={c}/>)}
-            </div>
-          </Sec>
-
-          {/* Communication */}
-          <Sec title="Communication Style" sub={"How to work with "+name.split(" ")[0]}>
-            <p style={bod}>{commStyle}</p>
-          </Sec>
-
-          {/* Career */}
-          <Sec title="Career Intelligence" sub={careerCtx.industry!=="general"?careerCtx.industry:undefined}>
-            <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
-              <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Career Archetype</div>
-              <div style={{fontSize:14,color:TX,fontFamily:"'Cormorant Garamond',serif",marginBottom:4}}>{careerCtx.archetype}</div>
-              <p style={{...bod,fontSize:12,color:FA}}>{careerCtx.archetypeDesc}</p>
-            </div>
-            <div style={{marginBottom:12}}>
-              <p style={{fontSize:9,color:FA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Strengths</p>
-              {strengths.map((s,i)=><div key={i} style={{fontSize:12,color:T.bodColor,lineHeight:1.75,marginBottom:4}}>◆ {s}</div>)}
-            </div>
-            {careerCtx.nextMoves.length>0&&<div style={{marginBottom:12}}>
-              <p style={{fontSize:9,color:FA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Three Paths Forward</p>
-              {careerCtx.nextMoves.map((m,i)=>(
-                <div key={i} style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",marginBottom:8,borderLeft:"2px solid "+["#7C9CBF","#7DBF8A","#C97A7A"][i]}}>
-                  <div style={{fontSize:10,color:["#7C9CBF","#7DBF8A","#C97A7A"][i],fontWeight:600,marginBottom:3}}>0{i+1} — {m.title}</div>
-                  <p style={{...bod,fontSize:12,color:FA}}>{m.desc}</p>
-                </div>
-              ))}
-            </div>}
-            <div style={hl}><p style={bod}><strong style={{color:G}}>Blind spot: </strong>{blind}</p></div>
-          </Sec>
-
-          {/* Roadmap */}
-          <Sec title="Strategic Roadmap">
-            {roadmap.map((r,i)=>(
-              <div key={i} style={{marginBottom:16,paddingLeft:14,borderLeft:"2px solid "+G,position:"relative"}}>
-                <div style={{position:"absolute",left:-5,top:5,width:8,height:8,borderRadius:"50%",background:G}}/>
-                <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",fontWeight:600,marginBottom:3}}>{r.y} — {r.t}</div>
-                <p style={bod}>{r.a}</p>
-              </div>
-            ))}
-          </Sec>
-
-          {/* Numerology */}
-          {nums&&lpData&&<Sec title="Numerology + Element">
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
-              {[["Life Path",nums.lp,G],["Expression",nums.expr,"#7C9CBF"],["Soul Urge",nums.soul,"#7DBF8A"],["Birth Day",nums.bd,"#C97A7A"],["Personality",nums.pers,"#B07DBF"],["Personal Year",nums.py,G]].map(([l,v,c])=>(
-                <div key={l} style={{background:T.inputBackground,border:"1px solid "+BR,borderRadius:10,padding:"12px 8px",textAlign:"center"}}>
-                  <div style={{fontSize:26,fontWeight:700,color:c,lineHeight:1,fontFamily:"'Cormorant Garamond',serif"}}>{v}</div>
-                  <div style={{fontSize:8,color:FA,letterSpacing:1.5,textTransform:"uppercase",marginTop:4}}>{l}</div>
-                </div>
-              ))}
-            </div>
-            <InfoCard label={nums.element+" Element · "+nums.sign} text={elemData?.desc} color="#7DBF8A"/>
-            <div style={{marginTop:8}}><InfoCard label={"Life Path "+nums.lp+" · "+lpData.name} text={lpData.desc} color={G}/></div>
-            <div style={{...hl,marginTop:8}}><p style={{...bod,fontSize:12,fontStyle:"italic",color:FA}}>Shadow: {lpData.shadow}</p></div>
-            {numSynthesis&&<div style={{...hl,marginTop:8}}><p style={bod}>{numSynthesis}</p></div>}
-          </Sec>}
-
-          {/* Decision Timing */}
-          {decisionTiming&&<Sec title="Element-Based Decision Timing" sub="When your energy peaks">
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-              <InfoCard label="Peak Hours" text={decisionTiming.peak} color={G}/>
-              <InfoCard label="Lucky Colours" text={decisionTiming.lucky} color="#7C9CBF"/>
-            </div>
-            <p style={bod}>{decisionTiming.decision}</p>
-            {elemData&&<div style={{...hl,marginTop:10}}>
-              <p style={{...bod,fontSize:12}}><strong style={{color:"#7DBF8A"}}>Best seasons: </strong>{elemData.season}</p>
-              <p style={{...bod,fontSize:12,marginTop:6}}><strong style={{color:"#C97A7A"}}>Watch out: </strong>{elemData.avoid}</p>
-            </div>}
-          </Sec>}
-
-          {/* Soul Purpose */}
-          {soulPurpose&&<Sec title="Soul Purpose" sub={soulPurpose.missionType}>
-            <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
-              <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Core Mission</div>
-              <p style={bod}>{soulPurpose.mission}</p>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-              <InfoCard label="The Lesson" text={soulPurpose.lesson} color="#7C9CBF"/>
-              <InfoCard label="Your Contribution" text={soulPurpose.contribution} color="#7DBF8A"/>
-            </div>
-            <div style={hl}><p style={{...bod,fontSize:12}}><strong style={{color:G}}>Daily alignment: </strong>{soulPurpose.daily}</p></div>
-          </Sec>}
-
-          {/* Daily Protocol */}
-          <Sec title="Daily Alignment Protocol" sub={"Enneagram Type "+ennType+" practices"}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              <InfoCard label="Morning Ritual" text={dailyProtocol.morning} color="#7DBF8A"/>
-              <InfoCard label="Weekly Practice" text={dailyProtocol.weekly} color={G}/>
-            </div>
-            <div style={{marginTop:8}}><InfoCard label="Intellectual Discernment" text={dailyProtocol.intellectual} color="#7C9CBF"/></div>
-          </Sec>
-
-          {/* Wealth */}
-          <Sec title="Wealth Psychology" sub={discLabel+" DISC profile"}>
-            <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid "+G}}>
-              <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Core Wealth Frequency</div>
-              <p style={bod}>{wealthPsych.frequency}</p>
-            </div>
-            <InfoCard label="Primary Block" text={wealthPsych.block} color="#C97A7A"/>
-            <div style={{marginTop:8}}><InfoCard label="Tailored Strategy" text={wealthPsych.strategy} color="#7DBF8A"/></div>
-          </Sec>
-
-          {/* Relationships */}
-          {relData&&<Sec title="Relationship Dynamics" sub={nums?.element+" Element"}>
-            <p style={{...bod,marginBottom:12}}>{relData.ideal}</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-              <InfoCard label="Love Lesson" text={relData.lesson} color="#C97A7A"/>
-              <InfoCard label="Ideal Resonance" text={relData.idealResonance} color="#7C9CBF"/>
-            </div>
-            <div style={hl}><p style={{...bod,fontSize:12}}><strong style={{color:G}}>Partner profile: </strong>{relData.partner}</p></div>
-          </Sec>}
-
-          {/* Life Journey */}
-          {lifeJourney&&<Sec title="Life Journey" sub="Career phases and trajectory">
-            {lifeJourney.map((p,i)=>(
-              <div key={i} style={{marginBottom:14,paddingLeft:14,borderLeft:"2px solid "+G,position:"relative"}}>
-                <div style={{position:"absolute",left:-5,top:5,width:8,height:8,borderRadius:"50%",background:i===lifeJourney.length-2?G:T.inputBackground,border:"2px solid "+G}}/>
-                <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",fontWeight:600,marginBottom:2}}>{p.icon} {p.year}</div>
-                <div style={{fontSize:12,color:TX,marginBottom:3,fontFamily:"'Cormorant Garamond',serif"}}>{p.title}</div>
-                <p style={{...bod,fontSize:11,color:FA}}>{p.desc}</p>
-              </div>
-            ))}
-          </Sec>}
-
-          {/* Role Models */}
-          {roleModels&&<Sec title="Strategic Role Models" sub={nums?.element+" element archetypes"}>
-            <p style={{...bod,fontSize:12,color:FA,marginBottom:14}}>Model the energy of Disciplined Visionaries who used your elemental profile to build massive, enduring impact.</p>
-            {roleModels.models.map((m,i)=>(
-              <div key={i} style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",marginBottom:8,display:"flex",gap:12,alignItems:"flex-start"}}>
-                <div style={{fontSize:18,fontWeight:700,color:G,fontFamily:"'Cormorant Garamond',serif",lineHeight:1,minWidth:20}}>{i+1}</div>
+            {/* Who You Are */}
+            <Sec id="profile" title="Who You Are" copyText={summary}>
+              <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:16,alignItems:"center"}}>
+                {(()=>{
+                  const dims=["O","C","E","A","N"],labels=["Open","Consc","Extra","Agree","Stable"],colors=["#7C9CBF","#C9A84C","#7DBF8A","#C97A7A","#B07DBF"];
+                  const cx=110,cy=110,r=75,n=dims.length;
+                  const angle=i=>(Math.PI*2*(i/n))-Math.PI/2;
+                  const pt=(i,val)=>{const a=angle(i),pct=val/100;return[cx+r*pct*Math.cos(a),cy+r*pct*Math.sin(a)];};
+                  const poly=dims.map((d,i)=>pt(i,ocean[d])).map(p=>p.join(",")).join(" ");
+                  return(
+                    <svg viewBox="0 0 220 220" style={{width:"clamp(140px,25vw,180px)",display:"block",flexShrink:0}}>
+                      {[0.25,0.5,0.75,1].map(pct=>{const pts=dims.map((_,i)=>{const a=angle(i);return[cx+r*pct*Math.cos(a),cy+r*pct*Math.sin(a)].join(",")}).join(" ");return <polygon key={pct} points={pts} fill="none" stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="1"/>;})}
+                      {dims.map((_,i)=>{const[x,y]=pt(i,1);return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke={dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.06)"} strokeWidth="1"/>;;})}
+                      <polygon points={poly} fill="rgba(201,168,76,0.12)" stroke="#C9A84C" strokeWidth="1.5" strokeLinejoin="round"/>
+                      {dims.map((d,i)=>{const[x,y]=pt(i,ocean[d]);return <circle key={d} cx={x} cy={y} r="4" fill={colors[i]}/>;;})}
+                      {dims.map((d,i)=>{const a=angle(i),lx=cx+(r+22)*Math.cos(a),ly=cy+(r+22)*Math.sin(a);return <text key={d} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize="8.5" fill={colors[i]} fontFamily="DM Sans,sans-serif" fontWeight="500">{labels[i]}</text>;})}
+                    </svg>
+                  );
+                })()}
                 <div>
-                  <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:3}}>
-                    <span style={{fontSize:12,color:TX,fontWeight:600}}>{m.name}</span>
-                    <span style={{fontSize:9,color:FA,fontStyle:"italic"}}>{m.tag}</span>
-                  </div>
-                  <p style={{...bod,fontSize:11,color:FA}}>{m.why}</p>
+                  <p style={bod}>{summary}</p>
+                  {careerCtx.skills.length>0&&<div style={{marginTop:10,display:"flex",gap:5,flexWrap:"wrap"}}>
+                    {careerCtx.skills.map(s=><span key={s} style={{fontSize:9,color:"#7DBF8A",background:"rgba(125,191,138,0.07)",border:"1px solid rgba(125,191,138,0.2)",padding:"3px 9px",borderRadius:4}}>{s}</span>)}
+                  </div>}
                 </div>
               </div>
-            ))}
-          </Sec>}
+            </Sec>
 
-          {/* Growth Edges */}
-          <Sec title="Growth Edges">
-            {growth.map((g,i)=><div key={i} style={{fontSize:12,color:T.bodColor,lineHeight:1.75,marginBottom:8,paddingLeft:14,borderLeft:"2px solid "+BR}}>▸ {g}</div>)}
-          </Sec>
+            {/* OCEAN */}
+            <Sec id="ocean" title="Big Five — OCEAN" sub="Personality Dimensions">
+              {Object.entries(ocean).map(([k,v])=>(
+                <div key={k} style={{marginBottom:16}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                    <span style={{fontSize:10,color:BC[k],letterSpacing:1,fontWeight:500,textTransform:"uppercase"}}>{BL[k]}</span>
+                    <span style={{fontSize:12,color:BC[k],fontWeight:600}}>{v}%</span>
+                  </div>
+                  <div style={{height:4,background:T.inputBackground,borderRadius:2,overflow:"hidden",marginBottom:5}}><div style={{height:"100%",width:v+"%",background:BC[k],borderRadius:2,transition:"width 0.6s ease"}}/></div>
+                  <p style={{...bod,fontSize:11,color:FA}}>{oceanText[k]}</p>
+                </div>
+              ))}
+            </Sec>
+
+            {/* MBTI */}
+            <Sec id="mbti" title={"MBTI — "+mbti} sub={mbtiData[0]} copyText={`${mbti} — ${mbtiData[0]}: ${mbtiData[1]}`}>
+              <p style={bod}>{mbtiData[1]}</p>
+              <div style={hl}><p style={{...bod,fontStyle:"italic",fontSize:12}}>{mbtiData[2]}</p></div>
+            </Sec>
+
+            {/* Enneagram */}
+            <Sec id="enneagram" title={"Enneagram — Type "+ennType} sub={ennData.name}>
+              <p style={{...bod,marginBottom:12}}>{ennData.core}</p>
+              <div style={grid2}>
+                {[["Gift",ennData.gift,"#7DBF8A","enn-gift"],["Growth",ennData.growth,G,"enn-growth"],["Under Stress",ennData.stress,"#C97A7A","enn-stress"],["Wing",ennData.wing,"#7C9CBF","enn-wing"]].map(([l,t,c,cid])=><InfoCard key={l} label={l} text={t} color={c} copyId={cid}/>)}
+              </div>
+            </Sec>
+
+            {/* Communication */}
+            <Sec id="comms" title="Communication Style" sub={"How to work with "+name.split(" ")[0]} copyText={commStyle}>
+              <p style={bod}>{commStyle}</p>
+            </Sec>
+
+            {/* Career */}
+            <Sec id="career" title="Career Intelligence" sub={careerCtx.industry!=="general"?careerCtx.industry:undefined}>
+              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
+                <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Career Archetype</div>
+                <div style={{fontSize:14,color:TX,fontFamily:"'Cormorant Garamond',serif",marginBottom:4}}>{careerCtx.archetype}</div>
+                <p style={{...bod,fontSize:12,color:FA}}>{careerCtx.archetypeDesc}</p>
+              </div>
+              <div style={{marginBottom:12}}>
+                <p style={{fontSize:9,color:FA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Strengths</p>
+                {strengths.map((s,i)=><div key={i} style={{fontSize:12,color:T.bodColor,lineHeight:1.75,marginBottom:4}}>◆ {s}</div>)}
+              </div>
+              {careerCtx.nextMoves.length>0&&<div style={{marginBottom:12}}>
+                <p style={{fontSize:9,color:FA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Three Paths Forward</p>
+                {careerCtx.nextMoves.map((m,i)=>(
+                  <div key={i} style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",marginBottom:8,borderLeft:"2px solid "+["#7C9CBF","#7DBF8A","#C97A7A"][i]}}>
+                    <div style={{fontSize:10,color:["#7C9CBF","#7DBF8A","#C97A7A"][i],fontWeight:600,marginBottom:3}}>0{i+1} — {m.title}</div>
+                    <p style={{...bod,fontSize:12,color:FA}}>{m.desc}</p>
+                  </div>
+                ))}
+              </div>}
+              <div style={hl}><p style={bod}><strong style={{color:G}}>Blind spot: </strong>{blind}</p></div>
+            </Sec>
+
+            {/* Roadmap */}
+            <Sec id="roadmap" title="Strategic Roadmap">
+              {roadmap.map((r,i)=>(
+                <div key={i} style={{marginBottom:16,paddingLeft:14,borderLeft:"2px solid "+G,position:"relative"}}>
+                  <div style={{position:"absolute",left:-5,top:5,width:8,height:8,borderRadius:"50%",background:G}}/>
+                  <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",fontWeight:600,marginBottom:3}}>{r.y} — {r.t}</div>
+                  <p style={bod}>{r.a}</p>
+                </div>
+              ))}
+            </Sec>
+
+            {/* Numerology */}
+            {nums&&lpData&&<Sec id="numerology" title="Numerology + Element">
+              <div style={grid3}>
+                {[["Life Path",nums.lp,G],["Expression",nums.expr,"#7C9CBF"],["Soul Urge",nums.soul,"#7DBF8A"],["Birth Day",nums.bd,"#C97A7A"],["Personality",nums.pers,"#B07DBF"],["Personal Year",nums.py,G]].map(([l,v,c])=>(
+                  <div key={l} style={{background:T.inputBackground,border:"1px solid "+BR,borderRadius:10,padding:"12px 8px",textAlign:"center"}}>
+                    <div style={{fontSize:26,fontWeight:700,color:c,lineHeight:1,fontFamily:"'Cormorant Garamond',serif"}}>{v}</div>
+                    <div style={{fontSize:8,color:FA,letterSpacing:1.5,textTransform:"uppercase",marginTop:4}}>{l}</div>
+                  </div>
+                ))}
+              </div>
+              <InfoCard label={nums.element+" Element · "+nums.sign} text={elemData?.desc} color="#7DBF8A" copyId="elem"/>
+              <div style={{marginTop:8}}><InfoCard label={"Life Path "+nums.lp+" · "+lpData.name} text={lpData.desc} color={G} copyId="lp"/></div>
+              <div style={{...hl,marginTop:8}}><p style={{...bod,fontSize:12,fontStyle:"italic",color:FA}}>Shadow: {lpData.shadow}</p></div>
+              {numSynthesis&&<div style={{...hl,marginTop:8}}><p style={bod}>{numSynthesis}</p></div>}
+            </Sec>}
+
+            {/* Decision Timing */}
+            {decisionTiming&&<Sec id="timing" title="Element-Based Decision Timing" sub="When your energy peaks">
+              <div style={grid2}>
+                <InfoCard label="Peak Hours" text={decisionTiming.peak} color={G}/>
+                <InfoCard label="Lucky Colours" text={decisionTiming.lucky} color="#7C9CBF" copyId="colours"/>
+              </div>
+              <p style={{...bod,marginTop:10}}>{decisionTiming.decision}</p>
+              {elemData&&<div style={{...hl,marginTop:10}}>
+                <p style={{...bod,fontSize:12}}><strong style={{color:"#7DBF8A"}}>Best seasons: </strong>{elemData.season}</p>
+                <p style={{...bod,fontSize:12,marginTop:6}}><strong style={{color:"#C97A7A"}}>Watch out: </strong>{elemData.avoid}</p>
+              </div>}
+            </Sec>}
+
+            {/* Soul Purpose */}
+            {soulPurpose&&<Sec id="soul" title="Soul Purpose" sub={soulPurpose.missionType} copyText={soulPurpose.mission}>
+              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
+                <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Core Mission</div>
+                <p style={bod}>{soulPurpose.mission}</p>
+              </div>
+              <div style={grid2}>
+                <InfoCard label="The Lesson" text={soulPurpose.lesson} color="#7C9CBF" copyId="lesson"/>
+                <InfoCard label="Your Contribution" text={soulPurpose.contribution} color="#7DBF8A" copyId="contribution"/>
+              </div>
+              <div style={hl}><p style={{...bod,fontSize:12}}><strong style={{color:G}}>Daily alignment: </strong>{soulPurpose.daily}</p></div>
+            </Sec>}
+
+            {/* Daily Protocol */}
+            <Sec id="daily" title="Daily Alignment Protocol" sub={"Enneagram Type "+ennType+" practices"}>
+              <div style={grid2}>
+                <InfoCard label="Morning Ritual" text={dailyProtocol.morning} color="#7DBF8A" copyId="morning"/>
+                <InfoCard label="Weekly Practice" text={dailyProtocol.weekly} color={G} copyId="weekly"/>
+              </div>
+              <div style={{marginTop:8}}><InfoCard label="Intellectual Discernment" text={dailyProtocol.intellectual} color="#7C9CBF" copyId="intellectual"/></div>
+            </Sec>
+
+            {/* Wealth */}
+            <Sec id="wealth" title="Wealth Psychology" sub={discLabel+" DISC profile"}>
+              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid "+G}}>
+                <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Core Wealth Frequency</div>
+                <p style={bod}>{wealthPsych.frequency}</p>
+              </div>
+              <InfoCard label="Primary Block" text={wealthPsych.block} color="#C97A7A" copyId="wblock"/>
+              <div style={{marginTop:8}}><InfoCard label="Tailored Strategy" text={wealthPsych.strategy} color="#7DBF8A" copyId="wstrat"/></div>
+            </Sec>
+
+            {/* Relationships */}
+            {relData&&<Sec id="relationships" title="Relationship Dynamics" sub={nums?.element+" Element"}>
+              <p style={{...bod,marginBottom:12}}>{relData.ideal}</p>
+              <div style={grid2}>
+                <InfoCard label="Love Lesson" text={relData.lesson} color="#C97A7A" copyId="lovelesson"/>
+                <InfoCard label="Ideal Resonance" text={relData.idealResonance} color="#7C9CBF"/>
+              </div>
+              <div style={hl}><p style={{...bod,fontSize:12}}><strong style={{color:G}}>Partner profile: </strong>{relData.partner}</p></div>
+            </Sec>}
+
+            {/* Life Journey */}
+            {lifeJourney&&<Sec id="journey" title="Life Journey" sub="Career phases and trajectory">
+              {lifeJourney.map((p,i)=>(
+                <div key={i} style={{marginBottom:14,paddingLeft:14,borderLeft:"2px solid "+G,position:"relative"}}>
+                  <div style={{position:"absolute",left:-5,top:5,width:8,height:8,borderRadius:"50%",background:i===lifeJourney.length-2?G:T.inputBackground,border:"2px solid "+G}}/>
+                  <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",fontWeight:600,marginBottom:2}}>{p.icon} {p.year}</div>
+                  <div style={{fontSize:12,color:TX,marginBottom:3,fontFamily:"'Cormorant Garamond',serif"}}>{p.title}</div>
+                  <p style={{...bod,fontSize:11,color:FA}}>{p.desc}</p>
+                </div>
+              ))}
+            </Sec>}
+
+            {/* Role Models */}
+            {roleModels&&<Sec id="rolemodels" title="Strategic Role Models" sub={nums?.element+" element archetypes"}>
+              <p style={{...bod,fontSize:12,color:FA,marginBottom:14}}>Model the energy of Disciplined Visionaries who used your elemental profile to build massive, enduring impact.</p>
+              {roleModels.models.map((m,i)=>(
+                <div key={i} style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",marginBottom:8,display:"flex",gap:12,alignItems:"flex-start"}}>
+                  <div style={{fontSize:18,fontWeight:700,color:G,fontFamily:"'Cormorant Garamond',serif",lineHeight:1,minWidth:20}}>{i+1}</div>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:3,flexWrap:"wrap"}}>
+                      <span style={{fontSize:12,color:TX,fontWeight:600}}>{m.name}</span>
+                      <span style={{fontSize:9,color:FA,fontStyle:"italic"}}>{m.tag}</span>
+                    </div>
+                    <p style={{...bod,fontSize:11,color:FA}}>{m.why}</p>
+                  </div>
+                </div>
+              ))}
+            </Sec>}
+
+            {/* Growth Edges */}
+            <Sec id="growth" title="Growth Edges">
+              {growth.map((g,i)=><div key={i} style={{fontSize:12,color:T.bodColor,lineHeight:1.75,marginBottom:8,paddingLeft:14,borderLeft:"2px solid "+BR}}>▸ {g}</div>)}
+            </Sec>
 
           {/* Quote */}
           {quote&&<div style={{background:dark?"linear-gradient(135deg,#090E15,#131F2D)":"linear-gradient(135deg,#F0EDE6,#E8E4DA)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:14,padding:"28px",textAlign:"center",marginBottom:22,position:"relative",overflow:"hidden"}}>
             <div style={{fontSize:40,color:"rgba(201,168,76,0.12)",fontFamily:"Georgia,serif",position:"absolute",top:8,left:18,lineHeight:1}}>"</div>
             <p style={{fontSize:15,color:TX,fontStyle:"italic",lineHeight:1.85,margin:"0 0 10px",fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300,position:"relative",zIndex:1}}>"{quote}"</p>
-            <p style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase"}}>— {headline}</p>
+            <p style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>— {headline}</p>
+            <button onClick={()=>copyInsight("quote",quote)} style={{background:"transparent",border:"1px solid rgba(201,168,76,0.3)",borderRadius:6,padding:"5px 14px",fontSize:9,color:copiedId==="quote"?G:FA,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",letterSpacing:1}}>
+              {copiedId==="quote"?"✓ COPIED":"⎘ COPY QUOTE"}
+            </button>
           </div>}
 
-          {/* HOW THIS REPORT WAS BUILT */}
-          <Sec title="How This Report Was Built" sub="Methodology & Parameters">
+          {/* Methodology */}
+          <Sec id="methodology" title="How This Report Was Built" sub="Methodology & Parameters">
             <p style={{...bod,fontSize:12,color:FA,marginBottom:16}}>This report is generated by a rules-based scoring engine — no AI, no server, no guesswork. Here is exactly how each section was derived from the information you provided.</p>
-
-            {/* OCEAN */}
             <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+BR}}>
               <div style={{fontSize:10,color:G,fontWeight:600,marginBottom:6}}>🧠 Big Five OCEAN — Keyword Frequency Scoring</div>
-              <p style={{...bod,fontSize:11,color:FA,marginBottom:6}}>Your name, role, background context, and CV were combined into a single text corpus. Each of the five dimensions was scored by counting keyword hits from a bank of ~30 signal words per dimension (positive and negative).</p>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                {[["O — Openness",`Words like "innovation, creative, strategy, explore, digital, transform" push this up. Words like "routine, admin, procedure" push it down. Your score: ${ocean.O}%`,"#7C9CBF"],["C — Conscientiousness",`Words like "audit, compliance, accuracy, ifrs, framework, governance, deliver, precise" push this up. Your score: ${ocean.C}%`,"#C9A84C"],["E — Extraversion",`Words like "lead, team, client, stakeholder, present, network" push this up. Words like "independent, remote, solo, technical" push it down. Your score: ${ocean.E}%`,"#7DBF8A"],["A — Agreeableness",`Words like "mentor, support, community, empathy, collaborate, service" push this up. Words like "competitive, revenue, aggressive" push it down. Your score: ${ocean.A}%`,"#C97A7A"],["N — Emotional Stability",`Words like "stable, resilient, confident, high stakes, crisis, manage pressure" lower this dimension (more stable). Words like "cautious, sensitive, verify, monitor" increase it. Your score: ${ocean.N}%`,"#B07DBF"]].map(([t,d,c])=>(
+              <p style={{...bod,fontSize:11,color:FA,marginBottom:8}}>Your name, role, background context, and CV were combined into a single text corpus. Each dimension was scored by counting keyword hits from a bank of ~30 signal words per dimension.</p>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:6}}>
+                {[["O — Openness",`"innovation, creative, strategy, explore" → up. "routine, admin, procedure" → down. Your score: ${ocean.O}%`,"#7C9CBF"],["C — Conscientiousness",`"audit, compliance, accuracy, ifrs, governance, precise" → up. Your score: ${ocean.C}%`,"#C9A84C"],["E — Extraversion",`"lead, team, client, stakeholder, present, network" → up. "independent, remote, solo" → down. Your score: ${ocean.E}%`,"#7DBF8A"],["A — Agreeableness",`"mentor, support, community, empathy, collaborate" → up. "competitive, revenue" → down. Your score: ${ocean.A}%`,"#C97A7A"],["N — Emotional Stability",`"stable, resilient, high stakes" → more stable (lower N). "cautious, sensitive, verify" → higher N. Your score: ${ocean.N}%`,"#B07DBF"]].map(([t,d,c])=>(
                   <div key={t} style={{background:T.pageBackground,borderRadius:7,padding:"10px 12px",borderLeft:"2px solid "+c}}>
                     <div style={{fontSize:9,color:c,fontWeight:600,marginBottom:3}}>{t}</div>
                     <p style={{...bod,fontSize:10,color:FA}}>{d}</p>
@@ -1117,18 +1255,10 @@ export default function App(){
                 ))}
               </div>
             </div>
-
-            {/* MBTI */}
             <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+BR}}>
-              <div style={{fontSize:10,color:G,fontWeight:600,marginBottom:6}}>🔤 MBTI {mbti} — OCEAN Crosswalk (Research-Based)</div>
-              <p style={{...bod,fontSize:11,color:FA,marginBottom:6}}>MBTI was not scored directly. It was mathematically derived from your OCEAN scores using published Big Five ↔ MBTI crosswalk research (McCrae & Costa, 1989; Furnham, 1996):</p>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-                {[
-                  [`E vs I — Extraversion axis`,`OCEAN E score: ${ocean.E}%. Threshold 53. Your result: ${mbti[0]}`],
-                  [`N vs S — Intuition axis`,`OCEAN O score: ${ocean.O}%. Threshold 54. Your result: ${mbti[1]}`],
-                  [`T vs F — Thinking axis`,`OCEAN A score: ${ocean.A}%. Threshold 52. Your result: ${mbti[2]}`],
-                  [`J vs P — Judging axis`,`OCEAN C score: ${ocean.C}%. Threshold 56. Your result: ${mbti[3]}`],
-                ].map(([t,d])=>(
+              <div style={{fontSize:10,color:G,fontWeight:600,marginBottom:6}}>🔤 MBTI {mbti} — OCEAN Crosswalk (McCrae & Costa, 1989)</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:5}}>
+                {[[`E vs I`,`OCEAN E ${ocean.E}% (threshold 53) → ${mbti[0]}`],[`N vs S`,`OCEAN O ${ocean.O}% (threshold 54) → ${mbti[1]}`],[`T vs F`,`OCEAN A ${ocean.A}% (threshold 52) → ${mbti[2]}`],[`J vs P`,`OCEAN C ${ocean.C}% (threshold 56) → ${mbti[3]}`]].map(([t,d])=>(
                   <div key={t} style={{background:T.pageBackground,borderRadius:7,padding:"9px 11px"}}>
                     <div style={{fontSize:9,color:G,fontWeight:600,marginBottom:2}}>{t}</div>
                     <p style={{...bod,fontSize:10,color:FA}}>{d}</p>
@@ -1136,66 +1266,55 @@ export default function App(){
                 ))}
               </div>
             </div>
-
-            {/* Enneagram */}
             <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+BR}}>
-              <div style={{fontSize:10,color:G,fontWeight:600,marginBottom:6}}>🌀 Enneagram Type {ennType} — Keyword Bank Matching</div>
-              <p style={{...bod,fontSize:11,color:FA,marginBottom:8}}>Nine keyword banks were scored independently. The type with the most keyword hits became your primary type. All nine raw scores:</p>
-              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              <div style={{fontSize:10,color:G,fontWeight:600,marginBottom:6}}>🌀 Enneagram Type {ennType} — All 9 raw keyword scores</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
                 {Object.entries(report.ennRawScores||{}).sort((a,b)=>b[1]-a[1]).map(([type,score])=>(
-                  <div key={type} style={{background:type===ennType?"rgba(201,168,76,0.12)":T.pageBackground,border:"1px solid "+(type===ennType?G:BR),borderRadius:6,padding:"5px 10px",textAlign:"center",minWidth:50}}>
+                  <div key={type} style={{background:type===ennType?"rgba(201,168,76,0.12)":T.pageBackground,border:"1px solid "+(type===ennType?G:BR),borderRadius:6,padding:"5px 10px",textAlign:"center",minWidth:48}}>
                     <div style={{fontSize:11,color:type===ennType?G:FA,fontWeight:type===ennType?700:400}}>T{type}</div>
-                    <div style={{fontSize:9,color:FA}}>{score} hits</div>
+                    <div style={{fontSize:9,color:FA}}>{score}</div>
                   </div>
                 ))}
               </div>
-              {report.ennType2&&<p style={{...bod,fontSize:10,color:FA,marginTop:8}}>Your secondary type is <strong style={{color:G}}>Type {report.ennType2}</strong> — worth reading about if Type {ennType} doesn't fully resonate.</p>}
+              {report.ennType2&&<p style={{...bod,fontSize:10,color:FA}}>Secondary type: <strong style={{color:G}}>Type {report.ennType2}</strong> — read this if Type {ennType} doesn't fully resonate.</p>}
             </div>
-
-            {/* DISC */}
-            <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+BR}}>
-              <div style={{fontSize:10,color:G,fontWeight:600,marginBottom:6}}>📊 DISC {discLabel} — Role Title & Action Verb Matching</div>
-              <p style={{...bod,fontSize:11,color:FA}}>Four keyword banks (D, I, S, C) were scored from your role titles, responsibilities, and action verbs in your CV or context. Dominant = highest hit count. Words like "director, executive, drive, transform" signal D; "sales, network, inspire" signal I; "support, coordinate, maintain" signal S; "audit, analysis, compliance, verify" signal C.</p>
-            </div>
-
-            {/* Numerology */}
-            {nums&&<div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+BR}}>
-              <div style={{fontSize:10,color:G,fontWeight:600,marginBottom:6}}>🔢 Numerology — Pure Arithmetic on Name + DOB</div>
-              <p style={{...bod,fontSize:11,color:FA,marginBottom:6}}>All numerology numbers are calculated using the Pythagorean system (standard Western numerology). No interpretation is involved — only mathematics:</p>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-                {[
-                  [`Life Path ${nums.lp}`,`Sum of all digits in DOB (${nums.lp === 11||nums.lp===22||nums.lp===33?"master number preserved":"reduced to single digit"})`],
-                  [`Birth Day ${nums.bd}`,`Day of birth reduced (${new Date(dob).getDate()} → ${nums.bd})`],
-                  [`Expression ${nums.expr}`,`Sum of all letters in full name using A=1, B=2... I=9, J=1 (Pythagorean table)`],
-                  [`Soul Urge ${nums.soul}`,`Sum of vowels only in full name`],
-                  [`Personality ${nums.pers}`,`Sum of consonants only in full name`],
-                  [`Personal Year ${nums.py}`,`DOB day + month + current year (${new Date().getFullYear()})`],
-                ].map(([t,d])=>(
-                  <div key={t} style={{background:T.pageBackground,borderRadius:7,padding:"9px 11px"}}>
-                    <div style={{fontSize:9,color:G,fontWeight:600,marginBottom:2}}>{t}</div>
-                    <p style={{...bod,fontSize:10,color:FA}}>{d}</p>
-                  </div>
-                ))}
-              </div>
-            </div>}
-
-            {/* Accuracy note */}
             <div style={{background:"rgba(201,168,76,0.05)",borderRadius:8,padding:"12px 14px",border:"1px solid rgba(201,168,76,0.15)"}}>
-              <p style={{...bod,fontSize:11,color:FA}}><strong style={{color:G}}>On accuracy:</strong> This engine scores your professional language and career data — it performs best when a CV is uploaded. Without a CV, it relies on the name, role, and context you enter. The more specific your input, the more personalised the output. Numerology calculations are always exact regardless of input quality.</p>
+              <p style={{...bod,fontSize:11,color:FA}}><strong style={{color:G}}>On accuracy:</strong> This engine performs best with a CV uploaded. Without one, it uses your name, role, and context. The more specific your input, the more personalised the output. Numerology is always mathematically exact.</p>
             </div>
           </Sec>
 
-          <div style={{background:T.inputBackground,borderRadius:8,padding:"10px 14px",marginBottom:20,display:"flex",gap:8,border:"1px solid "+BR}}>
-            <span style={{fontSize:14}}>🔒</span>
-            <p style={{fontSize:10,color:FA,lineHeight:1.6,margin:0}}>Your data was never sent anywhere. This report was generated entirely in your browser. Closing this tab deletes everything.{consent&&" Your anonymous patterns were saved locally per your preference."}</p>
+          {/* Accuracy Rating */}
+          <div style={{background:T.inputBackground,borderRadius:12,padding:"20px",marginBottom:20,border:"1px solid "+BR,textAlign:"center"}}>
+            <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>How accurate was this report?</div>
+            {!ratingDone?<>
+              <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:10}}>
+                {[1,2,3,4,5].map(star=>(
+                  <button key={star} onClick={()=>{setRating(star);setRatingDone(true);if(consent){try{const s=JSON.parse(localStorage.getItem("pie_ratings")||"[]");s.push({ts:Date.now(),r:star,mbti:mbti,enn:ennType});localStorage.setItem("pie_ratings",JSON.stringify(s.slice(-50)));}catch{}}}}
+                    style={{fontSize:28,background:"transparent",border:"none",cursor:"pointer",color:star<=rating?G:"rgba(201,168,76,0.25)",transition:"color 0.1s",padding:"4px"}} onMouseEnter={()=>setRating(star)} onMouseLeave={()=>setRating(0)}>
+                    ★
+                  </button>
+                ))}
+              </div>
+              <p style={{fontSize:10,color:FA}}>Your feedback helps us improve scoring accuracy</p>
+            </>:<>
+              <div style={{fontSize:24,marginBottom:6}}>{["😐","🙂","😊","😄","🤩"][rating-1]}</div>
+              <p style={{fontSize:12,color:G,fontWeight:500}}>{["We'll keep working on it","Good to know — thanks!","Glad it resonated!","Really glad to hear that!","That's what we're here for!"][rating-1]}</p>
+              <p style={{fontSize:10,color:FA,marginTop:4}}>Thanks for rating — this helps refine the engine.</p>
+            </>}
           </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>printToPDF(report,dob)} style={{flex:2,padding:"14px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>⬇ Download PDF</button>
-            <button onClick={copyShareLink} style={{flex:1,padding:"14px",background:T.inputBackground,border:`1px solid ${copied?G:BR}`,borderRadius:10,fontSize:12,color:copied?G:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s"}}>{copied?"✓ Copied":"🔗 Share"}</button>
+
+          <div style={{background:T.inputBackground,borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",gap:8,border:"1px solid "+BR}}>
+            <span style={{fontSize:14}}>🔒</span>
+            <p style={{fontSize:10,color:FA,lineHeight:1.6,margin:0}}>Your data was never sent anywhere. This report was generated entirely in your browser. Closing this tab deletes everything.{consent&&" Anonymous patterns saved locally."}</p>
+          </div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <button onClick={()=>printToPDF(report,dob)} style={{flex:"2 1 140px",padding:"14px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>⬇ Download PDF</button>
+            <button onClick={copyShareLink} style={{flex:"1 1 90px",padding:"14px",background:T.inputBackground,border:`1px solid ${copied?G:BR}`,borderRadius:10,fontSize:12,color:copied?G:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s"}}>{copied?"✓ Copied":"🔗 Share"}</button>
           </div>
           <button onClick={reset} style={{width:"100%",marginTop:8,padding:"12px",background:"transparent",border:"1px solid "+BR,borderRadius:10,fontSize:12,color:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← Generate Another Report</button>
         </div>
-      </div></div>
+      </div>
+      </div>
     );
   }
   return null;

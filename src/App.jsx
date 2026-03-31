@@ -1122,19 +1122,65 @@ export default function App(){
   // ── REPORT ───────────────────────────────────────
   if(stage==="report"&&report){
     const{headline,tagline,summary,ocean,oceanText,mbti,mbtiData,ennType,ennType2,ennRawScores,ennData,discLabel,discDom,strengths,blind,wealthPsych,roadmap,growth,quote,commStyle,numSynthesis,nums,lpData,elemData,careerCtx,soulPurpose,relData,roleModels,dailyProtocol,decisionTiming,lifeJourney,cognitiveStack,attachmentData,shadowData,stressCascade,crossFramework}=report;
-    const headerBg=dark?"linear-gradient(160deg,#090E15 0%,#131F2D 100%)":"linear-gradient(160deg,#F0EDE6 0%,#E8E4DA 100%)";
 
-    // TOC sections
+    // Report is ALWAYS white/light — professional print-ready appearance
+    const R = LIGHT_THEME;
+    const RG=R.G, RDK=R.DK, RD2=R.D2, RBR=R.BR, RTX=R.TX, RDM=R.DM, RFA=R.FA;
+    const rpg={minHeight:"100vh",background:"#F0EDE6",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 16px",fontFamily:"'DM Sans',system-ui,sans-serif"};
+    const rwid={background:"#FFFFFF",border:"1px solid rgba(0,0,0,0.08)",borderRadius:20,padding:"0 0 40px",width:"100%",maxWidth:720,boxShadow:"0 8px 40px rgba(0,0,0,0.08)"};
+    const rbod={color:"#333",fontSize:13,lineHeight:1.9};
+    const rhl={background:"rgba(201,168,76,0.07)",borderLeft:"3px solid #C9A84C",borderRadius:"0 8px 8px 0",padding:"12px 16px",marginTop:12};
+    const rBR="rgba(0,0,0,0.07)";
+    const rInputBg="#F8F6F1";
+    const rPageBg="#F0EDE6";
+
+    // Override Sec/Tag/InfoCard for report white theme
+    function RSec({id,title,sub,children,copyText}){
+      const isCollapsed=!!collapsed[id||title];
+      return(
+        <div id={id?`sec-${id}`:undefined} style={{marginBottom:24,borderBottom:"1px solid "+rBR,paddingBottom:isCollapsed?0:22}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,cursor:"pointer"}} onClick={()=>id&&toggleSection(id)}>
+            <span style={{fontSize:9,letterSpacing:3,color:RG,textTransform:"uppercase",flex:1}}>
+              {title}{sub&&<span style={{color:RFA,letterSpacing:0,textTransform:"none",fontSize:10,fontWeight:400}}> — {sub}</span>}
+            </span>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              {copyText&&<button onClick={e=>{e.stopPropagation();copyInsight(id||title,copyText);}} style={{background:"transparent",border:"1px solid "+rBR,borderRadius:4,padding:"2px 7px",fontSize:9,color:copiedId===(id||title)?RG:RFA,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{copiedId===(id||title)?"✓":"Copy"}</button>}
+              {id&&<span style={{fontSize:10,color:RFA,display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▾</span>}
+            </div>
+          </div>
+          {!isCollapsed&&children}
+        </div>
+      );
+    }
+    function RTag({children,c}){return <span style={{background:rInputBg,border:"1px solid rgba(201,168,76,0.4)",color:c||RG,fontSize:9,letterSpacing:1.5,padding:"4px 11px",borderRadius:20,textTransform:"uppercase"}}>{children}</span>;}
+    function RCard({label,text,color,copyId}){
+      return(
+        <div style={{background:rInputBg,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+(color||RG)}}>
+          <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:4}}>
+            <div style={{fontSize:9,color:color||RG,letterSpacing:1.5,textTransform:"uppercase",fontWeight:600}}>{label}</div>
+            {copyId&&text&&<button onClick={()=>copyInsight(copyId,text)} style={{background:"transparent",border:"none",fontSize:9,color:copiedId===copyId?RG:RFA,cursor:"pointer",padding:0,fontFamily:"'DM Sans',sans-serif"}}>{copiedId===copyId?"✓":"⎘"}</button>}
+          </div>
+          <p style={{...rbod,fontSize:12,color:RDM,margin:0}}>{text}</p>
+        </div>
+      );
+    }
+    const rgrid2={display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8};
+    const rgrid3={display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginBottom:14};
+
     const TOC_ITEMS=[
       {id:"profile",label:"Who You Are"},
       {id:"ocean",label:"Big Five OCEAN"},
       {id:"mbti",label:"MBTI"},
+      {id:"cognitive",label:"Cognitive Functions"},
+      {id:"synthesis",label:"Synthesis"},
       {id:"enneagram",label:"Enneagram"},
+      {id:"attachment",label:"Attachment"},
+      {id:"shadow",label:"Shadow Work"},
+      {id:"stress",label:"Stress Cascade"},
       {id:"comms",label:"Communication"},
       {id:"career",label:"Career"},
       {id:"roadmap",label:"Roadmap"},
       ...(nums?[{id:"numerology",label:"Numerology"}]:[]),
-      ...(decisionTiming?[{id:"timing",label:"Decision Timing"}]:[]),
       ...(soulPurpose?[{id:"soul",label:"Soul Purpose"}]:[]),
       {id:"daily",label:"Daily Protocol"},
       {id:"wealth",label:"Wealth"},
@@ -1142,35 +1188,33 @@ export default function App(){
       ...(lifeJourney?[{id:"journey",label:"Life Journey"}]:[]),
       ...(roleModels?[{id:"rolemodels",label:"Role Models"}]:[]),
       {id:"growth",label:"Growth Edges"},
-      {id:"methodology",label:"Methodology"},
+      {id:"guide",label:"How It Works"},
+      {id:"faq",label:"FAQ"},
     ];
 
-    // mobile responsive grid helper
-    const grid2={display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8};
-    const grid3={display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginBottom:14};
-
     return(
-      <div style={{...pg,position:"relative"}}>
+      <div style={{...rpg,position:"relative"}}>
         <ThemeBtn/>
 
-        {/* Floating TOC — hidden on very small screens via width check */}
+        {/* Floating TOC */}
         <div style={{position:"fixed",left:8,top:"50%",transform:"translateY(-50%)",zIndex:50,display:"flex",flexDirection:"column",gap:3,maxHeight:"80vh",overflowY:"auto"}}>
           {TOC_ITEMS.map((item,i)=>(
             <button key={item.id} onClick={()=>{const el=document.getElementById("sec-"+item.id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});setActiveSection(i);}}
-              style={{width:6,height:activeSection===i?24:8,borderRadius:3,background:activeSection===i?G:dark?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.12)",border:"none",cursor:"pointer",transition:"all 0.25s",padding:0,display:"block"}} title={item.label}/>
+              style={{width:6,height:activeSection===i?24:8,borderRadius:3,background:activeSection===i?"#C9A84C":"rgba(0,0,0,0.15)",border:"none",cursor:"pointer",transition:"all 0.25s",padding:0,display:"block"}} title={item.label}/>
           ))}
         </div>
 
-        <div style={wid}>
-          {/* HEADER */}
-          <div style={{background:headerBg,borderRadius:"20px 20px 0 0",padding:"clamp(32px,6vw,52px) clamp(16px,5vw,36px) 44px",textAlign:"center",borderBottom:"1px solid "+BR,marginBottom:28,position:"relative",overflow:"hidden"}}>
-            <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"radial-gradient(ellipse at 40% 50%,rgba(201,168,76,0.05) 0%,transparent 60%)",pointerEvents:"none"}}/>
+        <div style={rwid}>
+          {/* HEADER — dark gold on white */}
+          <div style={{background:"linear-gradient(160deg,#090E15 0%,#1C2B3A 100%)",borderRadius:"20px 20px 0 0",padding:"clamp(32px,6vw,52px) clamp(16px,5vw,36px) 44px",textAlign:"center",borderBottom:"1px solid rgba(0,0,0,0.08)",marginBottom:28,position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"radial-gradient(ellipse at 40% 50%,rgba(201,168,76,0.06) 0%,transparent 60%)",pointerEvents:"none"}}/>
+
             <div style={{fontSize:9,letterSpacing:4,color:G,textTransform:"uppercase",marginBottom:14}}>Personal Intelligence Report</div>
             <h1 style={{fontSize:"clamp(22px,5vw,28px)",color:TX,margin:"8px 0 6px",fontFamily:"'Cormorant Garamond',Georgia,serif",fontWeight:300}}>{name}</h1>
             <p style={{fontSize:16,color:G,fontStyle:"italic",margin:"0 0 6px",fontFamily:"'Cormorant Garamond',serif"}}>{headline}</p>
             <p style={{fontSize:12,color:DM,fontStyle:"italic",margin:"0 0 18px",lineHeight:1.6,maxWidth:400,marginLeft:"auto",marginRight:"auto"}}>{tagline}</p>
             <div style={{display:"flex",justifyContent:"center",gap:6,flexWrap:"wrap",marginBottom:18}}>
-              {[mbti,"Enneagram "+ennType,"DISC — "+discLabel,...(nums?["Life Path "+nums.lp,nums.element]:[]),...(careerCtx.industry!=="general"?[careerCtx.industry]:[])].map(t=><Tag key={t}>{t}</Tag>)}
+              {[mbti,"Enneagram "+ennType,"DISC — "+discLabel,...(nums?["Life Path "+nums.lp,nums.element]:[]),...(careerCtx.industry!=="general"?[careerCtx.industry]:[])].map(t=><RTag key={t}>{t}</RTag>)}
             </div>
             <div style={{display:"flex",justifyContent:"center",gap:"clamp(8px,2vw,14px)",flexWrap:"wrap"}}>
               {Object.entries(ocean).map(([k,v])=>{
@@ -1195,14 +1239,14 @@ export default function App(){
               <button onClick={()=>printToPDF(report,dob)} style={{flex:"2 1 120px",padding:"12px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
                 ⬇ Download PDF
               </button>
-              <button onClick={copyShareLink} style={{flex:"1 1 80px",padding:"12px",background:T.inputBackground,border:`1px solid ${copied?G:BR}`,borderRadius:10,fontSize:12,color:copied?G:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s"}}>
+              <button onClick={copyShareLink} style={{flex:"1 1 80px",padding:"12px",background:rInputBg,border:`1px solid ${copied?G:BR}`,borderRadius:10,fontSize:12,color:copied?G:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s"}}>
                 {copied?"✓ Copied":"🔗 Share"}
               </button>
-              <button onClick={reset} style={{flex:"1 1 70px",padding:"12px",background:T.inputBackground,border:"1px solid "+BR,borderRadius:10,fontSize:12,color:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← New</button>
+              <button onClick={reset} style={{flex:"1 1 70px",padding:"12px",background:rInputBg,border:"1px solid "+rBR,borderRadius:10,fontSize:12,color:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← New</button>
             </div>
 
             {/* Who You Are */}
-            <Sec id="profile" title="Who You Are" copyText={summary}>
+            <RSec id="profile" title="Who You Are" copyText={summary}>
               <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:16,alignItems:"center"}}>
                 {(()=>{
                   const dims=["O","C","E","A","N"],labels=["Open","Consc","Extra","Agree","Stable"],colors=["#7C9CBF","#C9A84C","#7DBF8A","#C97A7A","#B07DBF"];
@@ -1221,112 +1265,112 @@ export default function App(){
                   );
                 })()}
                 <div>
-                  <p style={bod}>{summary}</p>
+                  <p style={rbod}>{summary}</p>
                   {careerCtx.skills.length>0&&<div style={{marginTop:10,display:"flex",gap:5,flexWrap:"wrap"}}>
                     {careerCtx.skills.map(s=><span key={s} style={{fontSize:9,color:"#7DBF8A",background:"rgba(125,191,138,0.07)",border:"1px solid rgba(125,191,138,0.2)",padding:"3px 9px",borderRadius:4}}>{s}</span>)}
                   </div>}
                 </div>
               </div>
-            </Sec>
+            </RSec>
 
             {/* OCEAN */}
-            <Sec id="ocean" title="Big Five — OCEAN" sub="Personality Dimensions">
+            <RSec id="ocean" title="Big Five — OCEAN" sub="Personality Dimensions">
               {Object.entries(ocean).map(([k,v])=>(
                 <div key={k} style={{marginBottom:16}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                     <span style={{fontSize:10,color:BC[k],letterSpacing:1,fontWeight:500,textTransform:"uppercase"}}>{BL[k]}</span>
                     <span style={{fontSize:12,color:BC[k],fontWeight:600}}>{v}%</span>
                   </div>
-                  <div style={{height:4,background:T.inputBackground,borderRadius:2,overflow:"hidden",marginBottom:5}}><div style={{height:"100%",width:v+"%",background:BC[k],borderRadius:2,transition:"width 0.6s ease"}}/></div>
-                  <p style={{...bod,fontSize:11,color:FA}}>{oceanText[k]}</p>
+                  <div style={{height:4,background:rInputBg,borderRadius:2,overflow:"hidden",marginBottom:5}}><div style={{height:"100%",width:v+"%",background:BC[k],borderRadius:2,transition:"width 0.6s ease"}}/></div>
+                  <p style={{...rbod,fontSize:11,color:FA}}>{oceanText[k]}</p>
                 </div>
               ))}
-            </Sec>
+            </RSec>
 
             {/* MBTI */}
-            <Sec id="mbti" title={"MBTI — "+mbti} sub={mbtiData[0]} copyText={`${mbti} — ${mbtiData[0]}: ${mbtiData[1]}`}>
-              <p style={bod}>{mbtiData[1]}</p>
-              <div style={hl}><p style={{...bod,fontStyle:"italic",fontSize:12}}>{mbtiData[2]}</p></div>
-            </Sec>
+            <RSec id="mbti" title={"MBTI — "+mbti} sub={mbtiData[0]} copyText={`${mbti} — ${mbtiData[0]}: ${mbtiData[1]}`}>
+              <p style={rbod}>{mbtiData[1]}</p>
+              <div style={rhl}><p style={{...rbod,fontStyle:"italic",fontSize:12}}>{mbtiData[2]}</p></div>
+            </RSec>
 
             {/* Cognitive Function Stack */}
-            {cognitiveStack&&<Sec id="cognitive" title="Cognitive Function Stack" sub={`How ${name.split(" ")[0]}'s mind actually works`}>
-              <p style={{...bod,fontSize:12,color:FA,marginBottom:14}}>Your MBTI type is built from a specific hierarchy of cognitive functions — the mental processes you use most naturally, in order of strength. Understanding these explains not just your preferences, but the actual mechanics of how you think, decide, and perceive.</p>
+            {cognitiveStack&&<RSec id="cognitive" title="Cognitive Function Stack" sub={`How ${name.split(" ")[0]}'s mind actually works`}>
+              <p style={{...rbod,fontSize:12,color:FA,marginBottom:14}}>Your MBTI type is built from a specific hierarchy of cognitive functions — the mental processes you use most naturally, in order of strength. Understanding these explains not just your preferences, but the actual mechanics of how you think, decide, and perceive.</p>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8,marginBottom:12}}>
                 {[
                   {label:"Dominant — "+cognitiveStack.dom,desc:cognitiveStack.domDesc,color:G,badge:"Primary"},
                   {label:"Auxiliary — "+cognitiveStack.aux,desc:cognitiveStack.auxDesc,color:"#7C9CBF",badge:"Secondary"},
                 ].map((f,i)=>(
-                  <div key={i} style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+f.color}}>
+                  <div key={i} style={{background:rInputBg,borderRadius:9,padding:"12px 14px",borderLeft:"3px solid "+f.color}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
                       <div style={{fontSize:9,color:f.color,letterSpacing:1.5,textTransform:"uppercase",fontWeight:600}}>{f.label}</div>
-                      <span style={{fontSize:8,color:FA,background:T.pageBackground,padding:"1px 6px",borderRadius:4}}>{f.badge}</span>
+                      <span style={{fontSize:8,color:FA,background:rPageBg,padding:"1px 6px",borderRadius:4}}>{f.badge}</span>
                     </div>
-                    <p style={{...bod,fontSize:11,color:DM}}>{f.desc}</p>
+                    <p style={{...rbod,fontSize:11,color:DM}}>{f.desc}</p>
                   </div>
                 ))}
               </div>
-              <div style={hl}><p style={{...bod,fontSize:12}}><strong style={{color:"#C97A7A"}}>Inferior function shadow: </strong>{cognitiveStack.shadowDesc}</p></div>
-            </Sec>}
+              <div style={rhl}><p style={{...rbod,fontSize:12}}><strong style={{color:"#C97A7A"}}>Inferior function shadow: </strong>{cognitiveStack.shadowDesc}</p></div>
+            </RSec>}
 
             {/* Cross-Framework Synthesis */}
-            {crossFramework&&<Sec id="synthesis" title="Cross-Framework Synthesis" sub={`${name.split(" ")[0]}'s integrated psychological profile`}>
-              <p style={{...bod,fontSize:12,color:FA,marginBottom:14}}>Each framework captures a different dimension of personality. Where they intersect is where the most precise picture of an individual emerges. The following insights are generated specifically from the combination of {name.split(" ")[0]}'s scores across all frameworks.</p>
-              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid "+G}}>
+            {crossFramework&&<RSec id="synthesis" title="Cross-Framework Synthesis" sub={`${name.split(" ")[0]}'s integrated psychological profile`}>
+              <p style={{...rbod,fontSize:12,color:FA,marginBottom:14}}>Each framework captures a different dimension of personality. Where they intersect is where the most precise picture of an individual emerges. The following insights are generated specifically from the combination of {name.split(" ")[0]}'s scores across all frameworks.</p>
+              <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid "+G}}>
                 <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:6,fontWeight:600}}>MBTI × Enneagram — Motivational Architecture</div>
-                <p style={bod}>{crossFramework.comboInsight}</p>
+                <p style={rbod}>{crossFramework.comboInsight}</p>
               </div>
-              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid #7C9CBF"}}>
+              <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid #7C9CBF"}}>
                 <div style={{fontSize:9,color:"#7C9CBF",letterSpacing:2,textTransform:"uppercase",marginBottom:6,fontWeight:600}}>DISC × OCEAN — Behavioural Signature</div>
-                <p style={bod}>{crossFramework.discOceanInsight}</p>
+                <p style={rbod}>{crossFramework.discOceanInsight}</p>
               </div>
-              {crossFramework.elemCareerInsight&&<div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid #7DBF8A"}}>
+              {crossFramework.elemCareerInsight&&<div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid #7DBF8A"}}>
                 <div style={{fontSize:9,color:"#7DBF8A",letterSpacing:2,textTransform:"uppercase",marginBottom:6,fontWeight:600}}>Element × Career — Environmental Fit</div>
-                <p style={bod}>{crossFramework.elemCareerInsight}</p>
+                <p style={rbod}>{crossFramework.elemCareerInsight}</p>
               </div>}
-              {crossFramework.lpMbtiInsight&&<div style={{background:T.inputBackground,borderRadius:10,padding:"14px",borderLeft:"3px solid #B07DBF"}}>
+              {crossFramework.lpMbtiInsight&&<div style={{background:rInputBg,borderRadius:10,padding:"14px",borderLeft:"3px solid #B07DBF"}}>
                 <div style={{fontSize:9,color:"#B07DBF",letterSpacing:2,textTransform:"uppercase",marginBottom:6,fontWeight:600}}>Life Path × MBTI — Destiny Architecture</div>
-                <p style={bod}>{crossFramework.lpMbtiInsight}</p>
+                <p style={rbod}>{crossFramework.lpMbtiInsight}</p>
               </div>}
-            </Sec>}
+            </RSec>}
 
             {/* Enneagram */}
-            <Sec id="enneagram" title={"Enneagram — Type "+ennType} sub={ennData.name}>
-              <p style={{...bod,marginBottom:12}}>{ennData.core}</p>
-              <div style={grid2}>
-                {[["Gift",ennData.gift,"#7DBF8A","enn-gift"],["Growth",ennData.growth,G,"enn-growth"],["Under Stress",ennData.stress,"#C97A7A","enn-stress"],["Wing",ennData.wing,"#7C9CBF","enn-wing"]].map(([l,t,c,cid])=><InfoCard key={l} label={l} text={t} color={c} copyId={cid}/>)}
+            <RSec id="enneagram" title={"Enneagram — Type "+ennType} sub={ennData.name}>
+              <p style={{...rbod,marginBottom:12}}>{ennData.core}</p>
+              <div style={rgrid2}>
+                {[["Gift",ennData.gift,"#7DBF8A","enn-gift"],["Growth",ennData.growth,G,"enn-growth"],["Under Stress",ennData.stress,"#C97A7A","enn-stress"],["Wing",ennData.wing,"#7C9CBF","enn-wing"]].map(([l,t,c,cid])=><RCard key={l} label={l} text={t} color={c} copyId={cid}/>)}
               </div>
-            </Sec>
+            </RSec>
 
             {/* Attachment Style */}
-            {attachmentData&&<Sec id="attachment" title="Attachment Style" sub={"Relational patterns for Type "+ennType}>
-              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:10,borderLeft:"3px solid #C97A7A"}}>
+            {attachmentData&&<RSec id="attachment" title="Attachment Style" sub={"Relational patterns for Type "+ennType}>
+              <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:10,borderLeft:"3px solid #C97A7A"}}>
                 <div style={{fontSize:9,color:"#C97A7A",letterSpacing:2,textTransform:"uppercase",marginBottom:4,fontWeight:600}}>Style: {attachmentData.style}</div>
-                <p style={bod}>{attachmentData.desc}</p>
+                <p style={rbod}>{attachmentData.desc}</p>
               </div>
-              <div style={grid2}>
-                <InfoCard label="Relational Pattern" text={attachmentData.pattern} color="#B07DBF" copyId="att-pattern"/>
-                <InfoCard label="What You Need" text={attachmentData.healing} color="#7DBF8A" copyId="att-healing"/>
+              <div style={rgrid2}>
+                <RCard label="Relational Pattern" text={attachmentData.pattern} color="#B07DBF" copyId="att-pattern"/>
+                <RCard label="What You Need" text={attachmentData.healing} color="#7DBF8A" copyId="att-healing"/>
               </div>
-            </Sec>}
+            </RSec>}
 
             {/* Shadow Work */}
-            {shadowData&&<Sec id="shadow" title="Shadow Work" sub={"The psychology beneath Type "+ennType}>
-              <p style={{...bod,fontSize:12,color:FA,marginBottom:12}}>The shadow is not the 'bad' part of personality — it is the unconscious part. Understanding it is the most accelerated path to integration and authentic leadership.</p>
-              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid #C97A7A"}}>
+            {shadowData&&<RSec id="shadow" title="Shadow Work" sub={"The psychology beneath Type "+ennType}>
+              <p style={{...rbod,fontSize:12,color:FA,marginBottom:12}}>The shadow is not the 'bad' part of personality — it is the unconscious part. Understanding it is the most accelerated path to integration and authentic leadership.</p>
+              <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid #C97A7A"}}>
                 <div style={{fontSize:9,color:"#C97A7A",letterSpacing:2,textTransform:"uppercase",marginBottom:4,fontWeight:600}}>Primary Defence: {shadowData.primaryDefence.split(" —")[0]}</div>
-                <p style={bod}>{shadowData.primaryDefence}</p>
+                <p style={rbod}>{shadowData.primaryDefence}</p>
               </div>
-              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid "+G}}>
+              <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid "+G}}>
                 <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4,fontWeight:600}}>Shadow Pattern</div>
-                <p style={bod}>{shadowData.shadowPattern}</p>
+                <p style={rbod}>{shadowData.shadowPattern}</p>
               </div>
-              <div style={hl}><p style={{...bod,fontSize:12}}><strong style={{color:"#7DBF8A"}}>Integration path: </strong>{shadowData.integrationPath}</p></div>
-            </Sec>}
+              <div style={rhl}><p style={{...rbod,fontSize:12}}><strong style={{color:"#7DBF8A"}}>Integration path: </strong>{shadowData.integrationPath}</p></div>
+            </RSec>}
 
             {/* Stress Cascade */}
-            {stressCascade&&<Sec id="stress" title="Stress Cascade & Recovery" sub={"Emotional regulation for Type "+ennType}>
-              <p style={{...bod,fontSize:12,color:FA,marginBottom:12}}>Understanding your personal stress pattern before it escalates is one of the highest-leverage investments in psychological wellbeing and professional resilience.</p>
+            {stressCascade&&<RSec id="stress" title="Stress Cascade & Recovery" sub={"Emotional regulation for Type "+ennType}>
+              <p style={{...rbod,fontSize:12,color:FA,marginBottom:12}}>Understanding your personal stress pattern before it escalates is one of the highest-leverage investments in psychological wellbeing and professional resilience.</p>
               <div style={{position:"relative",paddingLeft:16}}>
                 {[
                   {stage:"Early Warning",text:stressCascade.earlyWarning,color:"#7DBF8A"},
@@ -1336,28 +1380,28 @@ export default function App(){
                   <div key={i} style={{marginBottom:12,paddingLeft:14,borderLeft:"2px solid "+s.color,position:"relative"}}>
                     <div style={{position:"absolute",left:-5,top:6,width:8,height:8,borderRadius:"50%",background:s.color}}/>
                     <div style={{fontSize:9,color:s.color,letterSpacing:2,textTransform:"uppercase",fontWeight:600,marginBottom:3}}>{s.stage}</div>
-                    <p style={{...bod,fontSize:12}}>{s.text}</p>
+                    <p style={{...rbod,fontSize:12}}>{s.text}</p>
                   </div>
                 ))}
               </div>
-              <div style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",marginTop:4,borderLeft:"3px solid #7DBF8A"}}>
+              <div style={{background:rInputBg,borderRadius:9,padding:"12px 14px",marginTop:4,borderLeft:"3px solid #7DBF8A"}}>
                 <div style={{fontSize:9,color:"#7DBF8A",letterSpacing:2,textTransform:"uppercase",marginBottom:4,fontWeight:600}}>Recovery Protocol</div>
-                <p style={{...bod,fontSize:12,color:DM}}>{stressCascade.recovery}</p>
+                <p style={{...rbod,fontSize:12,color:DM}}>{stressCascade.recovery}</p>
               </div>
-              <div style={{...hl,marginTop:8}}><p style={{...bod,fontSize:12}}><strong style={{color:G}}>Regulation practice: </strong>{stressCascade.regulation}</p></div>
-            </Sec>}
+              <div style={{...rhl,marginTop:8}}><p style={{...rbod,fontSize:12}}><strong style={{color:G}}>Regulation practice: </strong>{stressCascade.regulation}</p></div>
+            </RSec>}
 
             {/* Communication */}
-            <Sec id="comms" title="Communication Style" sub={"How to work with "+name.split(" ")[0]} copyText={commStyle}>
-              <p style={bod}>{commStyle}</p>
-            </Sec>
+            <RSec id="comms" title="Communication Style" sub={"How to work with "+name.split(" ")[0]} copyText={commStyle}>
+              <p style={rbod}>{commStyle}</p>
+            </RSec>
 
             {/* Career */}
-            <Sec id="career" title="Career Intelligence" sub={careerCtx.industry!=="general"?careerCtx.industry:undefined}>
-              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
+            <RSec id="career" title="Career Intelligence" sub={careerCtx.industry!=="general"?careerCtx.industry:undefined}>
+              <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
                 <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Career Archetype</div>
                 <div style={{fontSize:14,color:TX,fontFamily:"'Cormorant Garamond',serif",marginBottom:4}}>{careerCtx.archetype}</div>
-                <p style={{...bod,fontSize:12,color:FA}}>{careerCtx.archetypeDesc}</p>
+                <p style={{...rbod,fontSize:12,color:FA}}>{careerCtx.archetypeDesc}</p>
               </div>
               <div style={{marginBottom:12}}>
                 <p style={{fontSize:9,color:FA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Strengths</p>
@@ -1366,130 +1410,130 @@ export default function App(){
               {careerCtx.nextMoves.length>0&&<div style={{marginBottom:12}}>
                 <p style={{fontSize:9,color:FA,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Three Paths Forward</p>
                 {careerCtx.nextMoves.map((m,i)=>(
-                  <div key={i} style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",marginBottom:8,borderLeft:"2px solid "+["#7C9CBF","#7DBF8A","#C97A7A"][i]}}>
+                  <div key={i} style={{background:rInputBg,borderRadius:9,padding:"12px 14px",marginBottom:8,borderLeft:"2px solid "+["#7C9CBF","#7DBF8A","#C97A7A"][i]}}>
                     <div style={{fontSize:10,color:["#7C9CBF","#7DBF8A","#C97A7A"][i],fontWeight:600,marginBottom:3}}>0{i+1} — {m.title}</div>
-                    <p style={{...bod,fontSize:12,color:FA}}>{m.desc}</p>
+                    <p style={{...rbod,fontSize:12,color:FA}}>{m.desc}</p>
                   </div>
                 ))}
               </div>}
-              <div style={hl}><p style={bod}><strong style={{color:G}}>Blind spot: </strong>{blind}</p></div>
-            </Sec>
+              <div style={rhl}><p style={rbod}><strong style={{color:G}}>Blind spot: </strong>{blind}</p></div>
+            </RSec>
 
             {/* Roadmap */}
-            <Sec id="roadmap" title="Strategic Roadmap">
+            <RSec id="roadmap" title="Strategic Roadmap">
               {roadmap.map((r,i)=>(
                 <div key={i} style={{marginBottom:16,paddingLeft:14,borderLeft:"2px solid "+G,position:"relative"}}>
                   <div style={{position:"absolute",left:-5,top:5,width:8,height:8,borderRadius:"50%",background:G}}/>
                   <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",fontWeight:600,marginBottom:3}}>{r.y} — {r.t}</div>
-                  <p style={bod}>{r.a}</p>
+                  <p style={rbod}>{r.a}</p>
                 </div>
               ))}
-            </Sec>
+            </RSec>
 
             {/* Numerology */}
-            {nums&&lpData&&<Sec id="numerology" title="Numerology + Element">
-              <div style={grid3}>
+            {nums&&lpData&&<RSec id="numerology" title="Numerology + Element">
+              <div style={rgrid3}>
                 {[["Life Path",nums.lp,G],["Expression",nums.expr,"#7C9CBF"],["Soul Urge",nums.soul,"#7DBF8A"],["Birth Day",nums.bd,"#C97A7A"],["Personality",nums.pers,"#B07DBF"],["Personal Year",nums.py,G]].map(([l,v,c])=>(
-                  <div key={l} style={{background:T.inputBackground,border:"1px solid "+BR,borderRadius:10,padding:"12px 8px",textAlign:"center"}}>
+                  <div key={l} style={{background:rInputBg,border:"1px solid "+rBR,borderRadius:10,padding:"12px 8px",textAlign:"center"}}>
                     <div style={{fontSize:26,fontWeight:700,color:c,lineHeight:1,fontFamily:"'Cormorant Garamond',serif"}}>{v}</div>
                     <div style={{fontSize:8,color:FA,letterSpacing:1.5,textTransform:"uppercase",marginTop:4}}>{l}</div>
                   </div>
                 ))}
               </div>
-              <InfoCard label={nums.element+" Element · "+nums.sign} text={elemData?.desc} color="#7DBF8A" copyId="elem"/>
-              <div style={{marginTop:8}}><InfoCard label={"Life Path "+nums.lp+" · "+lpData.name} text={lpData.desc} color={G} copyId="lp"/></div>
-              <div style={{...hl,marginTop:8}}><p style={{...bod,fontSize:12,fontStyle:"italic",color:FA}}>Shadow: {lpData.shadow}</p></div>
-              {numSynthesis&&<div style={{...hl,marginTop:8}}><p style={bod}>{numSynthesis}</p></div>}
-            </Sec>}
+              <RCard label={nums.element+" Element · "+nums.sign} text={elemData?.desc} color="#7DBF8A" copyId="elem"/>
+              <div style={{marginTop:8}}><RCard label={"Life Path "+nums.lp+" · "+lpData.name} text={lpData.desc} color={G} copyId="lp"/></div>
+              <div style={{...rhl,marginTop:8}}><p style={{...rbod,fontSize:12,fontStyle:"italic",color:FA}}>Shadow: {lpData.shadow}</p></div>
+              {numSynthesis&&<div style={{...rhl,marginTop:8}}><p style={rbod}>{numSynthesis}</p></div>}
+            </RSec>}
 
             {/* Decision Timing */}
-            {decisionTiming&&<Sec id="timing" title="Element-Based Decision Timing" sub="When your energy peaks">
-              <div style={grid2}>
-                <InfoCard label="Peak Hours" text={decisionTiming.peak} color={G}/>
-                <InfoCard label="Lucky Colours" text={decisionTiming.lucky} color="#7C9CBF" copyId="colours"/>
+            {decisionTiming&&<RSec id="timing" title="Element-Based Decision Timing" sub="When your energy peaks">
+              <div style={rgrid2}>
+                <RCard label="Peak Hours" text={decisionTiming.peak} color={G}/>
+                <RCard label="Lucky Colours" text={decisionTiming.lucky} color="#7C9CBF" copyId="colours"/>
               </div>
-              <p style={{...bod,marginTop:10}}>{decisionTiming.decision}</p>
-              {elemData&&<div style={{...hl,marginTop:10}}>
-                <p style={{...bod,fontSize:12}}><strong style={{color:"#7DBF8A"}}>Best seasons: </strong>{elemData.season}</p>
-                <p style={{...bod,fontSize:12,marginTop:6}}><strong style={{color:"#C97A7A"}}>Watch out: </strong>{elemData.avoid}</p>
+              <p style={{...rbod,marginTop:10}}>{decisionTiming.decision}</p>
+              {elemData&&<div style={{...rhl,marginTop:10}}>
+                <p style={{...rbod,fontSize:12}}><strong style={{color:"#7DBF8A"}}>Best seasons: </strong>{elemData.season}</p>
+                <p style={{...rbod,fontSize:12,marginTop:6}}><strong style={{color:"#C97A7A"}}>Watch out: </strong>{elemData.avoid}</p>
               </div>}
-            </Sec>}
+            </RSec>}
 
             {/* Soul Purpose */}
-            {soulPurpose&&<Sec id="soul" title="Soul Purpose" sub={soulPurpose.missionType} copyText={soulPurpose.mission}>
-              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
+            {soulPurpose&&<RSec id="soul" title="Soul Purpose" sub={soulPurpose.missionType} copyText={soulPurpose.mission}>
+              <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:12,borderLeft:"3px solid "+G}}>
                 <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Core Mission</div>
-                <p style={bod}>{soulPurpose.mission}</p>
+                <p style={rbod}>{soulPurpose.mission}</p>
               </div>
-              <div style={grid2}>
-                <InfoCard label="The Lesson" text={soulPurpose.lesson} color="#7C9CBF" copyId="lesson"/>
-                <InfoCard label="Your Contribution" text={soulPurpose.contribution} color="#7DBF8A" copyId="contribution"/>
+              <div style={rgrid2}>
+                <RCard label="The Lesson" text={soulPurpose.lesson} color="#7C9CBF" copyId="lesson"/>
+                <RCard label="Your Contribution" text={soulPurpose.contribution} color="#7DBF8A" copyId="contribution"/>
               </div>
-              <div style={hl}><p style={{...bod,fontSize:12}}><strong style={{color:G}}>Daily alignment: </strong>{soulPurpose.daily}</p></div>
-            </Sec>}
+              <div style={rhl}><p style={{...rbod,fontSize:12}}><strong style={{color:G}}>Daily alignment: </strong>{soulPurpose.daily}</p></div>
+            </RSec>}
 
             {/* Daily Protocol */}
-            <Sec id="daily" title="Daily Alignment Protocol" sub={"Enneagram Type "+ennType+" practices"}>
-              <div style={grid2}>
-                <InfoCard label="Morning Ritual" text={dailyProtocol.morning} color="#7DBF8A" copyId="morning"/>
-                <InfoCard label="Weekly Practice" text={dailyProtocol.weekly} color={G} copyId="weekly"/>
+            <RSec id="daily" title="Daily Alignment Protocol" sub={"Enneagram Type "+ennType+" practices"}>
+              <div style={rgrid2}>
+                <RCard label="Morning Ritual" text={dailyProtocol.morning} color="#7DBF8A" copyId="morning"/>
+                <RCard label="Weekly Practice" text={dailyProtocol.weekly} color={G} copyId="weekly"/>
               </div>
-              <div style={{marginTop:8}}><InfoCard label="Intellectual Discernment" text={dailyProtocol.intellectual} color="#7C9CBF" copyId="intellectual"/></div>
-            </Sec>
+              <div style={{marginTop:8}}><RCard label="Intellectual Discernment" text={dailyProtocol.intellectual} color="#7C9CBF" copyId="intellectual"/></div>
+            </RSec>
 
             {/* Wealth */}
-            <Sec id="wealth" title="Wealth Psychology" sub={discLabel+" DISC profile"}>
-              <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid "+G}}>
+            <RSec id="wealth" title="Wealth Psychology" sub={discLabel+" DISC profile"}>
+              <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:8,borderLeft:"3px solid "+G}}>
                 <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Core Wealth Frequency</div>
-                <p style={bod}>{wealthPsych.frequency}</p>
+                <p style={rbod}>{wealthPsych.frequency}</p>
               </div>
-              <InfoCard label="Primary Block" text={wealthPsych.block} color="#C97A7A" copyId="wblock"/>
-              <div style={{marginTop:8}}><InfoCard label="Tailored Strategy" text={wealthPsych.strategy} color="#7DBF8A" copyId="wstrat"/></div>
-            </Sec>
+              <RCard label="Primary Block" text={wealthPsych.block} color="#C97A7A" copyId="wblock"/>
+              <div style={{marginTop:8}}><RCard label="Tailored Strategy" text={wealthPsych.strategy} color="#7DBF8A" copyId="wstrat"/></div>
+            </RSec>
 
             {/* Relationships */}
-            {relData&&<Sec id="relationships" title="Relationship Dynamics" sub={nums?.element+" Element"}>
-              <p style={{...bod,marginBottom:12}}>{relData.ideal}</p>
-              <div style={grid2}>
-                <InfoCard label="Love Lesson" text={relData.lesson} color="#C97A7A" copyId="lovelesson"/>
-                <InfoCard label="Ideal Resonance" text={relData.idealResonance} color="#7C9CBF"/>
+            {relData&&<RSec id="relationships" title="Relationship Dynamics" sub={nums?.element+" Element"}>
+              <p style={{...rbod,marginBottom:12}}>{relData.ideal}</p>
+              <div style={rgrid2}>
+                <RCard label="Love Lesson" text={relData.lesson} color="#C97A7A" copyId="lovelesson"/>
+                <RCard label="Ideal Resonance" text={relData.idealResonance} color="#7C9CBF"/>
               </div>
-              <div style={hl}><p style={{...bod,fontSize:12}}><strong style={{color:G}}>Partner profile: </strong>{relData.partner}</p></div>
-            </Sec>}
+              <div style={rhl}><p style={{...rbod,fontSize:12}}><strong style={{color:G}}>Partner profile: </strong>{relData.partner}</p></div>
+            </RSec>}
 
             {/* Life Journey */}
-            {lifeJourney&&<Sec id="journey" title="Life Journey" sub="Career phases and trajectory">
+            {lifeJourney&&<RSec id="journey" title="Life Journey" sub="Career phases and trajectory">
               {lifeJourney.map((p,i)=>(
                 <div key={i} style={{marginBottom:14,paddingLeft:14,borderLeft:"2px solid "+G,position:"relative"}}>
                   <div style={{position:"absolute",left:-5,top:5,width:8,height:8,borderRadius:"50%",background:i===lifeJourney.length-2?G:T.inputBackground,border:"2px solid "+G}}/>
                   <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",fontWeight:600,marginBottom:2}}>{p.icon} {p.year}</div>
                   <div style={{fontSize:12,color:TX,marginBottom:3,fontFamily:"'Cormorant Garamond',serif"}}>{p.title}</div>
-                  <p style={{...bod,fontSize:11,color:FA}}>{p.desc}</p>
+                  <p style={{...rbod,fontSize:11,color:FA}}>{p.desc}</p>
                 </div>
               ))}
-            </Sec>}
+            </RSec>}
 
             {/* Role Models */}
-            {roleModels&&<Sec id="rolemodels" title="Strategic Role Models" sub={nums?.element+" element archetypes"}>
-              <p style={{...bod,fontSize:12,color:FA,marginBottom:14}}>Model the energy of Disciplined Visionaries who used your elemental profile to build massive, enduring impact.</p>
+            {roleModels&&<RSec id="rolemodels" title="Strategic Role Models" sub={nums?.element+" element archetypes"}>
+              <p style={{...rbod,fontSize:12,color:FA,marginBottom:14}}>Model the energy of Disciplined Visionaries who used your elemental profile to build massive, enduring impact.</p>
               {roleModels.models.map((m,i)=>(
-                <div key={i} style={{background:T.inputBackground,borderRadius:9,padding:"12px 14px",marginBottom:8,display:"flex",gap:12,alignItems:"flex-start"}}>
+                <div key={i} style={{background:rInputBg,borderRadius:9,padding:"12px 14px",marginBottom:8,display:"flex",gap:12,alignItems:"flex-start"}}>
                   <div style={{fontSize:18,fontWeight:700,color:G,fontFamily:"'Cormorant Garamond',serif",lineHeight:1,minWidth:20}}>{i+1}</div>
                   <div style={{flex:1}}>
                     <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:3,flexWrap:"wrap"}}>
                       <span style={{fontSize:12,color:TX,fontWeight:600}}>{m.name}</span>
                       <span style={{fontSize:9,color:FA,fontStyle:"italic"}}>{m.tag}</span>
                     </div>
-                    <p style={{...bod,fontSize:11,color:FA}}>{m.why}</p>
+                    <p style={{...rbod,fontSize:11,color:FA}}>{m.why}</p>
                   </div>
                 </div>
               ))}
-            </Sec>}
+            </RSec>}
 
             {/* Growth Edges */}
-            <Sec id="growth" title="Growth Edges">
-              {growth.map((g,i)=><div key={i} style={{fontSize:12,color:T.bodColor,lineHeight:1.75,marginBottom:8,paddingLeft:14,borderLeft:"2px solid "+BR}}>▸ {g}</div>)}
-            </Sec>
+            <RSec id="growth" title="Growth Edges">
+              {growth.map((g,i)=><div key={i} style={{fontSize:12,color:T.bodColor,lineHeight:1.75,marginBottom:8,paddingLeft:14,borderLeft:"2px solid "+rBR}}>▸ {g}</div>)}
+            </RSec>
 
           {/* Quote */}
           {quote&&<div style={{background:dark?"linear-gradient(135deg,#090E15,#131F2D)":"linear-gradient(135deg,#F0EDE6,#E8E4DA)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:14,padding:"28px",textAlign:"center",marginBottom:22,position:"relative",overflow:"hidden"}}>
@@ -1502,32 +1546,32 @@ export default function App(){
           </div>}
 
           {/* Methodology */}
-          <Sec id="methodology" title="How This Report Was Built" sub="Methodology & Parameters">
-            <p style={{...bod,fontSize:12,color:FA,marginBottom:16}}>This report is generated by a rules-based scoring engine — no AI, no server, no guesswork. Here is exactly how each section was derived from the information you provided.</p>
-            <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+BR}}>
+          <RSec id="methodology" title="How This Report Was Built" sub="Methodology & Parameters">
+            <p style={{...rbod,fontSize:12,color:FA,marginBottom:16}}>This report is generated by a rules-based scoring engine — no AI, no server, no guesswork. Here is exactly how each section was derived from the information you provided.</p>
+            <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+rBR}}>
               <div style={{fontSize:10,color:G,fontWeight:600,marginBottom:6}}>🧠 Big Five OCEAN — Keyword Frequency Scoring</div>
-              <p style={{...bod,fontSize:11,color:FA,marginBottom:8}}>Your name, role, background context, and CV were combined into a single text corpus. Each dimension was scored by counting keyword hits from a bank of ~30 signal words per dimension.</p>
+              <p style={{...rbod,fontSize:11,color:FA,marginBottom:8}}>Your name, role, background context, and CV were combined into a single text corpus. Each dimension was scored by counting keyword hits from a bank of ~30 signal words per dimension.</p>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:6}}>
                 {[["O — Openness",`"innovation, creative, strategy, explore" → up. "routine, admin, procedure" → down. Your score: ${ocean.O}%`,"#7C9CBF"],["C — Conscientiousness",`"audit, compliance, accuracy, ifrs, governance, precise" → up. Your score: ${ocean.C}%`,"#C9A84C"],["E — Extraversion",`"lead, team, client, stakeholder, present, network" → up. "independent, remote, solo" → down. Your score: ${ocean.E}%`,"#7DBF8A"],["A — Agreeableness",`"mentor, support, community, empathy, collaborate" → up. "competitive, revenue" → down. Your score: ${ocean.A}%`,"#C97A7A"],["N — Emotional Stability",`"stable, resilient, high stakes" → more stable (lower N). "cautious, sensitive, verify" → higher N. Your score: ${ocean.N}%`,"#B07DBF"]].map(([t,d,c])=>(
-                  <div key={t} style={{background:T.pageBackground,borderRadius:7,padding:"10px 12px",borderLeft:"2px solid "+c}}>
+                  <div key={t} style={{background:rPageBg,borderRadius:7,padding:"10px 12px",borderLeft:"2px solid "+c}}>
                     <div style={{fontSize:9,color:c,fontWeight:600,marginBottom:3}}>{t}</div>
-                    <p style={{...bod,fontSize:10,color:FA}}>{d}</p>
+                    <p style={{...rbod,fontSize:10,color:FA}}>{d}</p>
                   </div>
                 ))}
               </div>
             </div>
-            <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+BR}}>
+            <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+rBR}}>
               <div style={{fontSize:10,color:G,fontWeight:600,marginBottom:6}}>🔤 MBTI {mbti} — OCEAN Crosswalk (McCrae & Costa, 1989)</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:5}}>
                 {[[`E vs I`,`OCEAN E ${ocean.E}% (threshold 53) → ${mbti[0]}`],[`N vs S`,`OCEAN O ${ocean.O}% (threshold 54) → ${mbti[1]}`],[`T vs F`,`OCEAN A ${ocean.A}% (threshold 52) → ${mbti[2]}`],[`J vs P`,`OCEAN C ${ocean.C}% (threshold 56) → ${mbti[3]}`]].map(([t,d])=>(
-                  <div key={t} style={{background:T.pageBackground,borderRadius:7,padding:"9px 11px"}}>
+                  <div key={t} style={{background:rPageBg,borderRadius:7,padding:"9px 11px"}}>
                     <div style={{fontSize:9,color:G,fontWeight:600,marginBottom:2}}>{t}</div>
-                    <p style={{...bod,fontSize:10,color:FA}}>{d}</p>
+                    <p style={{...rbod,fontSize:10,color:FA}}>{d}</p>
                   </div>
                 ))}
               </div>
             </div>
-            <div style={{background:T.inputBackground,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+BR}}>
+            <div style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:8,border:"1px solid "+rBR}}>
               <div style={{fontSize:10,color:G,fontWeight:600,marginBottom:6}}>🌀 Enneagram Type {ennType} — All 9 raw keyword scores</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
                 {Object.entries(report.ennRawScores||{}).sort((a,b)=>b[1]-a[1]).map(([type,score])=>(
@@ -1537,15 +1581,94 @@ export default function App(){
                   </div>
                 ))}
               </div>
-              {report.ennType2&&<p style={{...bod,fontSize:10,color:FA}}>Secondary type: <strong style={{color:G}}>Type {report.ennType2}</strong> — read this if Type {ennType} doesn't fully resonate.</p>}
+              {report.ennType2&&<p style={{...rbod,fontSize:10,color:RFA}}>Secondary type: <strong style={{color:RG}}>Type {report.ennType2}</strong> — read this if Type {ennType} doesn't fully resonate.</p>}
             </div>
             <div style={{background:"rgba(201,168,76,0.05)",borderRadius:8,padding:"12px 14px",border:"1px solid rgba(201,168,76,0.15)"}}>
-              <p style={{...bod,fontSize:11,color:FA}}><strong style={{color:G}}>On accuracy:</strong> This engine performs best with a CV uploaded. Without one, it uses your name, role, and context. The more specific your input, the more personalised the output. Numerology is always mathematically exact.</p>
+              <p style={{...rbod,fontSize:11,color:RFA}}><strong style={{color:RG}}>On accuracy:</strong> This engine performs best with a CV uploaded. Without one, it uses your name, role, and context. The more specific your input, the more personalised the output. Numerology is always mathematically exact.</p>
             </div>
-          </Sec>
+          </RSec>
+
+          {/* HOW IT WORKS GUIDE */}
+          <RSec id="guide" title="How This Report Is Generated" sub="Sources, methodology & academic references">
+            <p style={{...rbod,fontSize:12,color:RFA,marginBottom:16}}>This report is generated by a deterministic, rules-based scoring engine running entirely in your browser. No AI generates your results — every insight is computed from explicit algorithms grounded in published psychological research. Below is a complete account of each framework, its source literature, and how your scores were derived.</p>
+
+            {[
+              {icon:"🧠",title:"Big Five OCEAN — Personality Dimensions",color:"#7C9CBF",content:[
+                {h:"What it measures",t:"The Big Five (OCEAN) is the most empirically validated personality model in academic psychology, replicated across cultures and decades of research. It measures five broad personality traits: Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism."},
+                {h:"How your scores were calculated",t:"Your combined input text (name, role, background, CV, LinkedIn content, and industry answers) was analysed against a lexical keyword bank of ~30 signal words per dimension. Positive keyword hits increase the score; negative keyword hits decrease it. Each dimension is independently scored and normalised to a range of 18–97%."},
+                {h:"Academic sources",t:"Costa & McCrae (1992) — NEO PI-R manual. Goldberg (1993) — The structure of phenotypic personality traits. John, Naumann & Soto (2008) — Paradigm shift to the integrative Big Five taxonomy. McCrae & John (1992) — An introduction to the Five-Factor Model."},
+                {h:"Important limitation",t:"This engine uses career and professional language as a proxy for personality. It is most accurate when a CV or LinkedIn profile is provided. It is less accurate for people who use minimal professional language in their input."}
+              ]},
+              {icon:"🔤",title:"MBTI — Myers-Briggs Type Indicator",color:"#C9A84C",content:[
+                {h:"What it measures",t:"MBTI categorises individuals into 16 personality types based on four dichotomies: Extraversion/Introversion, iNtuition/Sensing, Thinking/Feeling, and Judging/Perceiving."},
+                {h:"How your type was derived",t:"MBTI was not scored directly from keywords. It was derived mathematically from your OCEAN scores using the empirically validated Big Five ↔ MBTI crosswalk. Each MBTI dimension is mapped to the most correlated OCEAN dimension with calibrated thresholds: E/I from OCEAN Extraversion (threshold 53%), N/S from Openness (54%), T/F from Agreeableness (52%), J/P from Conscientiousness (56%)."},
+                {h:"Academic sources",t:"McCrae & Costa (1989) — Reinterpreting the Myers-Briggs Type Indicator from the perspective of the five-factor model of personality. Furnham (1996) — The Big Five versus the Big Four. Saggino (2000) — The Big Three or the Big Five? A replication study. Rolland (2002) — The cross-cultural generalizability of the five-factor model of personality."},
+              ]},
+              {icon:"🌀",title:"Enneagram — Nine Personality Types",color:"#7DBF8A",content:[
+                {h:"What it measures",t:"The Enneagram is a psychological model identifying nine core motivational patterns, each defined by a fundamental fear and desire. Unlike MBTI (which describes behaviour), the Enneagram describes motivation — the 'why' beneath the 'what'."},
+                {h:"How your type was calculated",t:"Nine independent keyword banks were scored against your input text. Each bank contains 15–20 words most strongly associated with each type's professional behaviour and language patterns. The type with the highest keyword hit count becomes your primary type. The second-highest becomes your secondary (wing candidate). All nine raw scores are shown in the methodology section."},
+                {h:"Academic and clinical sources",t:"Riso & Hudson (1996) — Personality Types: Using the Enneagram for Self-Discovery. Naranjo (1994) — Character and Neurosis. Wagner (1996) — Reliability and validity study of the Enneagram of Personality: A TAB. Daniels & Price (2009) — The Essential Enneagram. Over 10,000 clinical interviews and personality assessments form the practitioner consensus base for type descriptions."},
+              ]},
+              {icon:"📊",title:"DISC — Behavioural Style Model",color:"#C97A7A",content:[
+                {h:"What it measures",t:"DISC identifies four behavioural styles: Dominant (D), Influential (I), Steady (S), and Conscientious (C). It focuses on observable behaviour and communication preferences rather than deep personality traits."},
+                {h:"How your style was identified",t:"Four keyword banks were scored from your role titles, responsibilities, and action verbs. D signals: director, executive, drive, transform, authority. I signals: sales, network, inspire, collaborate. S signals: support, coordinate, maintain, reliable. C signals: audit, analysis, compliance, verify, accuracy. The style with the highest hit count is your dominant style."},
+                {h:"Academic sources",t:"Marston (1928) — Emotions of Normal People (original DISC framework). Geier & Downey (1989) — Personal DISCernment Inventory. Warrick & Kupperschmidt (2008) — Using DISC behavioural technology to optimise team performance."},
+              ]},
+              {icon:"🔢",title:"Numerology — Pythagorean System",color:"#B07DBF",content:[
+                {h:"What it measures",t:"Western Pythagorean numerology assigns numerical values to letters (A=1 through I=9, repeating) and reduces dates to single digits or master numbers (11, 22, 33). Life Path, Expression, Soul Urge, and other numbers describe life themes and energetic tendencies."},
+                {h:"How your numbers were calculated",t:"All calculations are pure arithmetic — no interpretation is involved in the computation step. Life Path = sum of all DOB digits reduced. Expression = sum of all name letter values reduced. Soul Urge = sum of vowel values. Personality = sum of consonant values. Personal Year = DOB day + month + current year reduced. Master numbers 11, 22, and 33 are preserved (not further reduced)."},
+                {h:"Sources and tradition",t:"Pythagorean numerology originates in ancient Greek mathematical philosophy, systematised for character analysis in the early 20th century. Hitchcock (1902), Balliett (1917), and later popularised through practitioners including Glynis McCants and Hans Decoz. The system is presented here as a complementary reflective tool, not a predictive science."},
+              ]},
+              {icon:"🧬",title:"Cognitive Functions — Jungian Psychology",color:"#7C9CBF",content:[
+                {h:"What it measures",t:"Jungian cognitive functions describe the specific mental processes used to perceive and judge the world: Sensing (Si/Se), iNtuition (Ni/Ne), Thinking (Ti/Te), and Feeling (Fi/Fe). Each MBTI type has a characteristic hierarchy of these functions."},
+                {h:"How your stack was identified",t:"Your cognitive function stack is derived directly from your MBTI type using the established Jungian function hierarchy. The dominant function is the first letter pair of your MBTI. The auxiliary, tertiary, and inferior functions follow standard Jungian type theory."},
+                {h:"Sources",t:"Jung (1921/1971) — Psychological Types. Myers & Myers (1980) — Gifts Differing. Berens (2000) — Understanding Yourself and Others. Haas & Hunziker (2006) — Building Blocks of Personality Type."},
+              ]},
+              {icon:"❤️",title:"Attachment Theory & Shadow Work",color:"#C97A7A",content:[
+                {h:"Sources for Attachment Styles",t:"Bowlby (1969/1982) — Attachment and Loss. Ainsworth et al. (1978) — Patterns of Attachment. Bartholomew & Horowitz (1991) — Attachment styles among young adults. The four adult attachment styles (secure, anxious-preoccupied, dismissive-avoidant, fearful-avoidant) are correlated to Enneagram types based on published practitioner consensus and clinical observation."},
+                {h:"Sources for Shadow Work",t:"Jung (1951) — Aion: Researches into the Phenomenology of the Self. Johnson (1991) — Owning Your Own Shadow. Zweig & Abrams (1991) — Meeting the Shadow. Enneagram shadow patterns draw from Naranjo (1994) and Riso & Hudson (1999) — The Wisdom of the Enneagram."},
+                {h:"Important note",t:"Attachment style and shadow patterns are presented as reflective frameworks for self-inquiry, not clinical diagnoses. They represent tendencies observed across large populations sharing similar Enneagram types. Individual variation is significant."},
+              ]},
+            ].map((section,i)=>(
+              <div key={i} style={{background:rInputBg,borderRadius:10,padding:"14px",marginBottom:10,border:"1px solid "+rBR}}>
+                <div style={{fontSize:11,color:section.color,fontWeight:700,marginBottom:10,display:"flex",gap:8,alignItems:"center"}}>
+                  <span>{section.icon}</span><span>{section.title}</span>
+                </div>
+                {section.content.map((item,j)=>(
+                  <div key={j} style={{marginBottom:j<section.content.length-1?10:0}}>
+                    <div style={{fontSize:9,color:RFA,letterSpacing:1.5,textTransform:"uppercase",fontWeight:600,marginBottom:3}}>{item.h}</div>
+                    <p style={{...rbod,fontSize:11,color:RDM}}>{item.t}</p>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            <div style={{background:"rgba(201,168,76,0.06)",borderRadius:8,padding:"12px 14px",border:"1px solid rgba(201,168,76,0.2)",marginTop:4}}>
+              <p style={{...rbod,fontSize:11,color:RFA}}><strong style={{color:RG}}>Transparency statement:</strong> All interpretive content in this report (archetype descriptions, soul purpose statements, role model selections, career pathways) is derived from practitioner literature, published type descriptions, and aggregated patterns from thousands of clinical interviews and personality assessments. No single result should be taken as a definitive clinical assessment. This engine is designed as a reflective and developmental tool.</p>
+            </div>
+          </RSec>
+
+          {/* FAQ */}
+          <RSec id="faq" title="Frequently Asked Questions">
+            {[
+              {q:"How accurate is this report?",a:"Accuracy depends significantly on input quality. With a full CV uploaded and industry questions answered, OCEAN and career sections are highly calibrated. MBTI is derived mathematically from OCEAN — not from a separate questionnaire — so it is a strong estimate rather than a certified type. Enneagram type accuracy improves significantly when your professional language closely reflects your motivational patterns. Numerology is always 100% mathematically exact. We recommend treating the report as a high-quality mirror for self-reflection, not a clinical diagnosis."},
+              {q:"Why is my MBTI derived from OCEAN rather than a questionnaire?",a:"Traditional MBTI questionnaires ask for self-reported preferences, which can be influenced by social desirability bias and context. The OCEAN-to-MBTI crosswalk (McCrae & Costa, 1989) derives type from a stable trait profile rather than in-the-moment preferences. Research suggests this method produces types that are at least as reliable as self-report instruments — and often more so for professionals whose identity is strongly shaped by their career context."},
+              {q:"Is this the same as a paid personality assessment?",a:"This engine uses the same theoretical frameworks as paid assessments (Big Five, MBTI, Enneagram, DISC). The scoring method differs: paid assessments typically use validated psychometric questionnaires with hundreds of items; this engine infers personality from professional language patterns. The output is comparable in depth for career-oriented analysis but should not be used as a substitute for clinical or therapeutic assessment."},
+              {q:"What data does this store about me?",a:"Nothing is sent to any server. Your name, date of birth, CV, and inputs exist only in your browser's memory during your session. When you close the tab, everything is permanently deleted. If you opted into the anonymous improvement programme, only your personality type codes (MBTI, Enneagram, DISC, OCEAN scores) are saved to your own device's local storage — never transmitted anywhere."},
+              {q:"My MBTI type doesn't feel right. What should I do?",a:"Check your secondary Enneagram type in the Methodology section — sometimes your secondary type resonates more strongly. Also consider that career-focused language may skew your OCEAN profile toward your professional identity rather than your full personality. Try entering more personal background context, or read about the MBTI types adjacent to yours. The Cognitive Functions section may provide more nuanced resonance than the type label alone."},
+              {q:"How are the Soul Purpose and numerology interpretations generated?",a:"Soul Purpose content is mapped from your Life Path number to a curated interpretive framework drawing on Pythagorean numerology tradition and modern practitioners including Decoz (2002) and McCants (2005). The text is written by human experts and mapped algorithmically — not generated by AI for each user. Your specific numbers are calculated with complete mathematical precision; the interpretive content attached to those numbers is the practitioner consensus framework."},
+              {q:"Can I use this report professionally?",a:"Yes — many users share their report with managers, coaches, and team members as a starting point for development conversations. We recommend framing it as a reflective tool ('here is how I tend to show up professionally') rather than a definitive assessment. The Communication Style section in particular is frequently used in team settings."},
+              {q:"Why does the report sometimes feel very specific to me?",a:"Two reasons: First, the cross-framework synthesis engine generates content from the specific intersection of your MBTI + Enneagram + DISC + OCEAN + Element combination — not from any single framework in isolation. Second, if you provided your CV or LinkedIn content, the career parsing engine extracts your specific industry, seniority level, international exposure, and technical skills — generating career paths and blind spots specific to your professional context, not generic templates."},
+            ].map((item,i)=>(
+              <div key={i} style={{marginBottom:14,paddingBottom:14,borderBottom:i<7?"1px solid "+rBR:"none"}}>
+                <div style={{fontSize:12,color:"#1a1a1a",fontWeight:600,marginBottom:5}}>Q: {item.q}</div>
+                <p style={{...rbod,fontSize:12,color:RDM}}>{item.a}</p>
+              </div>
+            ))}
+          </RSec>
 
           {/* Accuracy Rating */}
-          <div style={{background:T.inputBackground,borderRadius:12,padding:"20px",marginBottom:20,border:"1px solid "+BR,textAlign:"center"}}>
+          <div style={{background:rInputBg,borderRadius:12,padding:"20px",marginBottom:20,border:"1px solid "+rBR,textAlign:"center"}}>
             <div style={{fontSize:9,color:G,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>How accurate was this report?</div>
             {!ratingDone?<>
               <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:10}}>
@@ -1564,15 +1687,15 @@ export default function App(){
             </>}
           </div>
 
-          <div style={{background:T.inputBackground,borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",gap:8,border:"1px solid "+BR}}>
+          <div style={{background:rInputBg,borderRadius:8,padding:"10px 14px",marginBottom:16,display:"flex",gap:8,border:"1px solid "+rBR}}>
             <span style={{fontSize:14}}>🔒</span>
             <p style={{fontSize:10,color:FA,lineHeight:1.6,margin:0}}>Your data was never sent anywhere. This report was generated entirely in your browser. Closing this tab deletes everything.{consent&&" Anonymous patterns saved locally."}</p>
           </div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             <button onClick={()=>printToPDF(report,dob)} style={{flex:"2 1 140px",padding:"14px",background:"linear-gradient(135deg,#C9A84C,#9a7030)",color:"#090E15",border:"none",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>⬇ Download PDF</button>
-            <button onClick={copyShareLink} style={{flex:"1 1 90px",padding:"14px",background:T.inputBackground,border:`1px solid ${copied?G:BR}`,borderRadius:10,fontSize:12,color:copied?G:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s"}}>{copied?"✓ Copied":"🔗 Share"}</button>
+            <button onClick={copyShareLink} style={{flex:"1 1 90px",padding:"14px",background:rInputBg,border:`1px solid ${copied?G:BR}`,borderRadius:10,fontSize:12,color:copied?G:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.2s"}}>{copied?"✓ Copied":"🔗 Share"}</button>
           </div>
-          <button onClick={reset} style={{width:"100%",marginTop:8,padding:"12px",background:"transparent",border:"1px solid "+BR,borderRadius:10,fontSize:12,color:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← Generate Another Report</button>
+          <button onClick={reset} style={{width:"100%",marginTop:8,padding:"12px",background:"transparent",border:"1px solid "+rBR,borderRadius:10,fontSize:12,color:DM,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>← Generate Another Report</button>
         </div>
       </div>
       </div>
